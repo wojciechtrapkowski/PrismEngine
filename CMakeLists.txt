@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(Prism VERSION 0.1.0 LANGUAGES CXX C)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CSS_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(PRISM_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+add_subdirectory(src)
+add_subdirectory(dependencies)
+
+message(STATUS "Prism Graphics Engine configured successfully!")
