@@ -24,21 +24,19 @@ fi
 # Check if we need to build
 if [ ! -f "build/bin/PrismMain" ] || [ $REBUILD -eq 1 ]; then
   echo "[INFO] Building project..."
-  if [ $REBUILD -eq 1 ]; then
-    if ! ./build.sh; then
-      echo "[ERROR] Build failed."
-      exit 1
-    fi
+  if ! ./build.sh; then
+    echo "[ERROR] Build failed."
+    exit 1
   fi
 fi
 
 # Navigate to the build directory
-cd build
+cd build/bin
 
 # Check if the binary exists
-if [ -f "bin/PrismMain" ]; then
+if [ -f "PrismMain" ]; then
   echo "[INFO] Running Prism Engine..."
-  ./bin/PrismMain
+  ./PrismMain
 else
   echo "[ERROR] PrismMain executable not found. Please check build errors."
   exit 1

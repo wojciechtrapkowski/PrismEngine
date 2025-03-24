@@ -1,27 +1,19 @@
 # Create an executable from main.cpp
 add_executable(PrismMain main.cpp)
 
+# Add subdirectories
+add_subdirectory(context)
+add_subdirectory(loaders)
+add_subdirectory(controllers)
+add_subdirectory(shaders)
+
 # Link required libraries
 target_link_libraries(PrismMain
     PRIVATE
-        ${OPENGL_LIBRARIES}
-        glad
-        imgui
-        EnTT::EnTT
+       ${PRISM_DEPENDENCIES}
+        Prism_Context
 )
 
-# If using GLFW as a target
-if(TARGET glfw)
-    target_link_libraries(PrismMain PRIVATE glfw)
-else()
-    # If GLFW was found as a package or is in dependencies
-    find_library(GLFW_LIBRARY glfw NAMES glfw3 libglfw libglfw3 PATHS ${DEPENDENCIES_LIBRARY_DIR})
-    if(GLFW_LIBRARY)
-        target_link_libraries(PrismMain PRIVATE ${GLFW_LIBRARY})
-    else()
-        message(WARNING "GLFW library not found")
-    endif()
-endif()
 
 # Mac-specific configurations
 if(APPLE)
