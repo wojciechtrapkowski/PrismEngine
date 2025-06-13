@@ -11,6 +11,7 @@
 #include "loaders/shader_loader.hpp"
 
 #include "systems/imgui_drawing_system.hpp"
+#include "systems/input_control_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
 #include "systems/present_system.hpp"
 #include "systems/screen_clearing_system.hpp"
@@ -18,13 +19,6 @@
 #include "resources/scene.hpp"
 
 #include <iostream>
-
-namespace {
-    void processInput(GLFWwindow *window) {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-    }
-} // namespace
 
 namespace Prism::Context {
     void Context::RunEngine() {
@@ -39,6 +33,8 @@ namespace Prism::Context {
 
         Loaders::ImGuiLoader imGuiLoader;
         auto imguiResource = imGuiLoader(window);
+
+        Systems::InputControlSystem inputControlSystem{};
 
         Systems::ScreenClearingSystem screenClearingSystem{};
         Systems::MeshDrawingSystem meshDrawingSystem{};
@@ -55,12 +51,16 @@ namespace Prism::Context {
         scene.AddNewMesh(std::make_unique<Resources::MeshResource>(
             std::move(meshDescriptor)));
 
+        inputControlSystem.Initialize();
+
         screenClearingSystem.Initialize();
         meshDrawingSystem.Initialize();
         imGuiDrawingSystem.Initialize();
         presentSystem.Initialize();
 
         while (!glfwWindowShouldClose(window)) {
+            inputControlSystem.Update(window);
+
             screenClearingSystem.Update();
             meshDrawingSystem.Update();
             imGuiDrawingSystem.Update();
@@ -70,13 +70,6 @@ namespace Prism::Context {
             meshDrawingSystem.Render(scene);
             imGuiDrawingSystem.Render();
             presentSystem.Render(window);
-
-            // glfw: swap buffers and poll IO events (keys pressed/released,
-            // mouse moved etc.)
-            // --------------
-
-            glfwPollEvents();
-            processInput(window);
         }
 
 

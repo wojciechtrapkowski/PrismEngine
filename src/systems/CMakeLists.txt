@@ -8,6 +8,7 @@ set(SYSTEMS_SOURCES
     mesh_drawing_system.cpp
     imgui_drawing_system.cpp
     present_system.cpp
+    input_control_system.cpp
 )
 
 set(SYSTEMS_HEADERS
@@ -15,6 +16,7 @@ set(SYSTEMS_HEADERS
     public/systems/mesh_drawing_system.hpp
     public/systems/imgui_drawing_system.hpp
     public/systems/present_system.hpp
+    public/systems/input_control_system.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC
