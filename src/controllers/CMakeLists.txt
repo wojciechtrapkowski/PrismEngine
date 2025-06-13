@@ -8,7 +8,7 @@ set(CONTROLLERS_SOURCES
 )
 
 set(CONTROLLERS_HEADERS
-    public/window_controller.hpp
+    public/controllers/window_controller.hpp
 )
 
 add_library(${PRISM_CONTROLLERS_LIBRARY_NAME} STATIC

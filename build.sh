@@ -29,13 +29,14 @@ mkdir -p build
 # Change to the build directory
 cd build
 
-# Configure the project
-echo "[INFO] Configuring project..."
-if ! cmake .. -DCMAKE_BUILD_TYPE=Debug; then
-  echo "[ERROR] Configuration failed"
-  exit 1
+# Only reconfigure if CMakeCache.txt does not exist
+if [ ! -f CMakeCache.txt ]; then
+  echo "[INFO] Configuring project..."
+  if ! cmake .. -DCMAKE_BUILD_TYPE=Debug; then
+    echo "[ERROR] Configuration failed"
+    exit 1
+  fi
 fi
-
 # Get number of CPU cores for parallel builds
 if [[ "$(uname)" == "Darwin" ]]; then
   # macOS

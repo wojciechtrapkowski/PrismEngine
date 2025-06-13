@@ -7,12 +7,14 @@ set(LOADERS_SOURCES
     glad_loader.cpp
     imgui_loader.cpp
     shader_loader.cpp
+    mesh_loader.cpp
 )
 
 set(LOADERS_HEADERS
-    public/glad_loader.hpp
-    public/imgui_loader.hpp
-    public/shader_loader.hpp
+    public/loaders/glad_loader.hpp
+    public/loaders/imgui_loader.hpp
+    public/loaders/shader_loader.hpp
+    public/loaders/mesh_loader.hpp
 )
 
 add_library(${PRISM_LOADERS_LIBRARY_NAME} STATIC
@@ -25,6 +27,7 @@ add_dependencies(
         glad
         glfw
         imgui
+        Prism_Resources
 )
 
 target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
@@ -32,6 +35,7 @@ target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
         glad
         glfw
         imgui
+        Prism_Resources
 )
 
 target_include_directories(${PRISM_LOADERS_LIBRARY_NAME}

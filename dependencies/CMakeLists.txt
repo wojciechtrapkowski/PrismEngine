@@ -2,6 +2,7 @@
 add_subdirectory(entt)
 add_subdirectory(glfw)
 add_subdirectory(imgui)
+add_subdirectory(glm)
 
 # Create GLAD library
 add_library(glad STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/glad.c")
@@ -35,6 +36,7 @@ message(STATUS "GLAD library configured successfully")
 set(PRISM_DEPENDENCIES 
     glad
     glfw
+    glm
     imgui
     ${OPENGL_LIBRARIES}
     ${MAC_LIBRARIES}

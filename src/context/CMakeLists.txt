@@ -8,7 +8,7 @@ set(CONTEXT_SOURCES
 )
 
 set(CONTEXT_HEADERS
-    public/context.hpp
+    public/context/context.hpp
 )
 
 add_library(${PRISM_CONTEXT_LIBRARY_NAME} STATIC
@@ -21,12 +21,14 @@ add_dependencies(
         Prism_Loaders
         Prism_Controllers
         Prism_Shaders
+        Prism_Systems
 )
 
 target_link_libraries(${PRISM_CONTEXT_LIBRARY_NAME}
     PRIVATE
         Prism_Loaders
         Prism_Controllers
+        Prism_Systems
 )
 
 target_include_directories(${PRISM_CONTEXT_LIBRARY_NAME}

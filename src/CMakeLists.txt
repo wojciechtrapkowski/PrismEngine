@@ -6,6 +6,8 @@ add_subdirectory(context)
 add_subdirectory(loaders)
 add_subdirectory(controllers)
 add_subdirectory(shaders)
+add_subdirectory(resources)
+add_subdirectory(systems)
 
 # Link required libraries
 target_link_libraries(PrismMain

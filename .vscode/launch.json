@@ -8,7 +8,7 @@
             "program": "${workspaceFolder}/build/bin/PrismMain",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build/bin",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
