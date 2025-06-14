@@ -8,6 +8,7 @@
 
 #include "loaders/glad_loader.hpp"
 #include "loaders/imgui_loader.hpp"
+#include "loaders/mesh_loader.hpp"
 #include "loaders/shader_loader.hpp"
 
 #include "systems/imgui_drawing_system.hpp"
@@ -34,6 +35,8 @@ namespace Prism::Context {
         Loaders::ImGuiLoader imGuiLoader;
         auto imguiResource = imGuiLoader(window);
 
+        Loaders::MeshLoader meshLoader{};
+
         Systems::InputControlSystem inputControlSystem{};
 
         Systems::ScreenClearingSystem screenClearingSystem{};
@@ -48,8 +51,17 @@ namespace Prism::Context {
                          {glm::vec3{0.0f, 0.5f, 0.0f}}},
             .indices = {{0}, {1}, {2}}};
 
-        scene.AddNewMesh(std::make_unique<Resources::MeshResource>(
-            std::move(meshDescriptor)));
+
+        // scene.AddNewMesh(std::make_unique<Resources::MeshResource>(
+        //     std::move(meshDescriptor)));
+
+        auto backpackModelOpt = meshLoader("backpack.obj");
+        if (!backpackModelOpt) {
+            std::cerr << "Couldn't load backpack model!" << std::endl;
+        }
+        auto &backpackModel = *backpackModelOpt;
+
+        scene.AddNewMesh(std::move(backpackModel));
 
         inputControlSystem.Initialize();
 

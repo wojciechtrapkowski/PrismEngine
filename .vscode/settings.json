@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        ".als.json": "jsonc",
         "iostream": "cpp",
         "optional": "cpp",
         "variant": "cpp",
@@ -62,6 +63,9 @@
         "algorithm": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "any": "cpp",
+        "cinttypes": "cpp",
+        "condition_variable": "cpp"
     }
 }

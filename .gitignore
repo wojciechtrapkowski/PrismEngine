@@ -113,3 +113,26 @@ Temporary Items
 
 build/
 imgui.ini
+
+# Ignore everything in models directory
+models/*
+
+# But NOT these file types (Assimp supported)
+!src/models/*.obj
+!src/models/*.fbx
+!src/models/*.dae
+!src/models/*.3ds
+!src/models/*.blend
+!src/models/*.ply
+!src/models/*.stl
+!src/models/*.gltf
+!src/models/*.glb
+!src/models/*.x
+!src/models/*.ac
+!src/models/*.ms3d
+!src/models/*.lwo
+!src/models/*.cob
+!src/models/*.ifc
+!src/models/*.off
+!src/models/*.3d
+!src/models/*.ase

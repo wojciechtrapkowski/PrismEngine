@@ -28,6 +28,7 @@ add_dependencies(
         glfw
         imgui
         Prism_Resources
+        assimp
 )
 
 target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
@@ -36,6 +37,7 @@ target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
         glfw
         imgui
         Prism_Resources
+        assimp
 )
 
 target_include_directories(${PRISM_LOADERS_LIBRARY_NAME}

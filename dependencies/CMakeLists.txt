@@ -3,6 +3,7 @@ add_subdirectory(entt)
 add_subdirectory(glfw)
 add_subdirectory(imgui)
 add_subdirectory(glm)
+add_subdirectory(assimp)
 
 # Create GLAD library
 add_library(glad STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/glad.c")
