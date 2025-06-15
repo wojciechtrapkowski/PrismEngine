@@ -22,8 +22,8 @@ namespace Prism::Loaders {
         ShaderLoader() = default;
         ~ShaderLoader() = default;
 
-        ShaderLoader(ShaderLoader &&other) = delete;
-        ShaderLoader &operator=(ShaderLoader &&) = delete;
+        ShaderLoader(ShaderLoader &&other) = default;
+        ShaderLoader &operator=(ShaderLoader &&) = default;
 
         ShaderLoader(ShaderLoader &other) = delete;
         ShaderLoader &operator=(ShaderLoader &) = delete;

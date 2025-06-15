@@ -1,7 +1,9 @@
 #pragma once
 
+#include "resources/resource.hpp"
+
 namespace Prism::Resources {
-    struct ImGuiResource {
+    struct ImGuiResource : ResourceImpl<ImGuiResource> {
         ImGuiResource() = default;
         ~ImGuiResource();
 

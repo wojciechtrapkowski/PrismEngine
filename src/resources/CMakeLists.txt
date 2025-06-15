@@ -11,10 +11,12 @@ set(RESOURCES_SOURCES
 )
 
 set(RESOURCES_HEADERS
+    public/resources/resource.hpp
     public/resources/shader_resource.hpp
     public/resources/imgui_resource.hpp
     public/resources/mesh_resource.hpp
     public/resources/scene.hpp
+    public/resources/context_resources.hpp
 )
 
 add_library(${PRISM_RESOURCES_LIBRARY_NAME} STATIC
@@ -28,6 +30,8 @@ add_dependencies(
         glfw
         glm
         imgui
+        EnTT
+        Prism_Components
 )
 
 target_link_libraries(${PRISM_RESOURCES_LIBRARY_NAME}
@@ -36,6 +40,8 @@ target_link_libraries(${PRISM_RESOURCES_LIBRARY_NAME}
         glfw
         glm
         imgui
+        EnTT
+        Prism_Components
 )
 
 target_include_directories(${PRISM_RESOURCES_LIBRARY_NAME}

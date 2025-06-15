@@ -4,10 +4,12 @@
 
 #include <GLFW/glfw3.h>
 
+#include "resources/context_resources.hpp"
+
 namespace Prism::Systems {
-    class InputControlSystem {
+    struct InputControlSystem {
       public:
-        InputControlSystem() = default;
+        InputControlSystem(Resources::ContextResources &contextResources);
         ~InputControlSystem() = default;
 
         InputControlSystem(InputControlSystem &other) = delete;
@@ -21,5 +23,6 @@ namespace Prism::Systems {
         void Update(GLFWwindow *window);
 
       private:
+        Resources::ContextResources &m_contextResources;
     };
 }; // namespace Prism::Systems

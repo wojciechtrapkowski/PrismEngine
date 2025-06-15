@@ -18,6 +18,6 @@ namespace Prism::Loaders {
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 330");
 
-        return std::make_unique<Resources::ImGuiResource>();
+        return {std::make_unique<Resources::ImGuiResource>()};
     }
 }; // namespace Prism::Loaders

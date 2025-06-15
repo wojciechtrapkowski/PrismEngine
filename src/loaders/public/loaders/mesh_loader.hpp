@@ -10,8 +10,8 @@ namespace Prism::Loaders {
         MeshLoader() = default;
         ~MeshLoader() = default;
 
-        MeshLoader(MeshLoader &&other) = delete;
-        MeshLoader &operator=(MeshLoader &&) = delete;
+        MeshLoader(MeshLoader &&other) = default;
+        MeshLoader &operator=(MeshLoader &&) = default;
 
         MeshLoader(MeshLoader &other) = delete;
         MeshLoader &operator=(MeshLoader &) = delete;

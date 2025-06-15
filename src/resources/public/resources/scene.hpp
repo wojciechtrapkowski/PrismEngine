@@ -2,8 +2,12 @@
 
 #include "resources/mesh_resource.hpp"
 
+#include <entt/entt.hpp>
+
+#include "resources/resource.hpp"
+
 namespace Prism::Resources {
-    struct Scene {
+    struct Scene : ResourceImpl<Scene> {
         Scene() = default;
         ~Scene() = default;
 
@@ -14,19 +18,21 @@ namespace Prism::Resources {
         Scene(Scene &other) = delete;
         Scene &operator=(Scene &other) = delete;
 
-        const std::vector<std::unique_ptr<MeshResource>> &GetAllMeshes() const {
-            return m_meshes;
-        }
+        entt::registry &GetRegistry() { return m_registry; }
 
-        void AddNewMesh(std::unique_ptr<Resources::MeshResource> meshResource) {
-            m_meshes.push_back(std::move(meshResource));
-        };
+        std::optional<std::reference_wrapper<const MeshResource>>
+        GetMesh(Resources::MeshResource::ID resourceId);
 
-        // We will need as well RemoveMesh(Mesh::ID) or something like that in
-        // the future.
+        void AddNewMesh(Resources::MeshResource::ID id,
+                        std::unique_ptr<Resources::MeshResource> meshResource);
+
+        void RemoveMesh(Resources::MeshResource::ID meshId);
 
       private:
-        // Will be converted to a map, when we starting using registsry.
-        std::vector<std::unique_ptr<MeshResource>> m_meshes;
+        entt::registry m_registry;
+
+        std::unordered_map<Resources::MeshResource::ID,
+                           std::unique_ptr<Resources::MeshResource>>
+            m_meshes;
     };
 }; // namespace Prism::Resources

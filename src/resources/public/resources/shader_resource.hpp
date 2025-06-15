@@ -4,8 +4,10 @@
 
 #include <GLFW/glfw3.h>
 
+#include "resources/resource.hpp"
+
 namespace Prism::Resources {
-    struct ShaderResource {
+    struct ShaderResource : ResourceImpl<ShaderResource> {
       public:
         ShaderResource(GLuint shaderProgram);
         ~ShaderResource();

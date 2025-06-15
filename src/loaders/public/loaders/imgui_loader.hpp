@@ -15,8 +15,8 @@ namespace Prism::Loaders {
         ImGuiLoader() = default;
         ~ImGuiLoader() = default;
 
-        ImGuiLoader(ImGuiLoader &&other) = delete;
-        ImGuiLoader &operator=(ImGuiLoader &&) = delete;
+        ImGuiLoader(ImGuiLoader &&other) = default;
+        ImGuiLoader &operator=(ImGuiLoader &&) = default;
 
         ImGuiLoader(ImGuiLoader &other) = delete;
         ImGuiLoader &operator=(ImGuiLoader &) = delete;

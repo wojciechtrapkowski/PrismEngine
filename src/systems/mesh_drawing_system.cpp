@@ -1,5 +1,7 @@
 #include "systems/mesh_drawing_system.hpp"
 
+#include "components/mesh.hpp"
+
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
@@ -32,10 +34,22 @@ namespace Prism::Systems {
     void MeshDrawingSystem::Render(Resources::Scene &scene) {
         glUseProgram(m_shaderResource->GetShaderProgram());
 
-        for (const auto &mesh : scene.GetAllMeshes()) {
-            glBindVertexArray(mesh->GetVertexArrayObject());
-            glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT,
-                           0);
+        auto &registry = scene.GetRegistry();
+
+        auto meshView = registry.view<Components::Mesh>();
+
+        for (const auto &meshEntity : meshView) {
+            const auto &meshResourceId =
+                meshView.get<Components::Mesh>(meshEntity).resourceId;
+            const auto &meshOpt = scene.GetMesh(meshResourceId);
+            if (!meshOpt) {
+                continue;
+            }
+            const auto &mesh = *meshOpt;
+
+            glBindVertexArray(mesh.get().GetVertexArrayObject());
+            glDrawElements(GL_TRIANGLES, mesh.get().GetIndexCount(),
+                           GL_UNSIGNED_INT, 0);
         }
     }
 } // namespace Prism::Systems

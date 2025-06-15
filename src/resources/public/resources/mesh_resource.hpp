@@ -8,8 +8,10 @@
 
 #include <vector>
 
+#include "resources/resource.hpp"
+
 namespace Prism::Resources {
-    struct MeshResource {
+    struct MeshResource : ResourceImpl<MeshResource> {
         struct Vertex {
             glm::vec3 position;
         };

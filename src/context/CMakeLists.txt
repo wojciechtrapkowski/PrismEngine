@@ -18,17 +18,21 @@ add_library(${PRISM_CONTEXT_LIBRARY_NAME} STATIC
 
 add_dependencies(
     ${PRISM_CONTEXT_LIBRARY_NAME}
+        EnTT
         Prism_Loaders
         Prism_Controllers
         Prism_Shaders
         Prism_Systems
+        Prism_Resources
 )
 
 target_link_libraries(${PRISM_CONTEXT_LIBRARY_NAME}
-    PRIVATE
+    PUBLIC
+        EnTT
         Prism_Loaders
         Prism_Controllers
         Prism_Systems
+        Prism_Resources
 )
 
 target_include_directories(${PRISM_CONTEXT_LIBRARY_NAME}
@@ -36,5 +40,4 @@ target_include_directories(${PRISM_CONTEXT_LIBRARY_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/public
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/src 
 )

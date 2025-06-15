@@ -7,8 +7,8 @@ namespace Prism::Loaders {
         GladLoader() = default;
         ~GladLoader() = default;
 
-        GladLoader(GladLoader &&other) = delete;
-        GladLoader &operator=(GladLoader &&) = delete;
+        GladLoader(GladLoader &&other) = default;
+        GladLoader &operator=(GladLoader &&) = default;
 
         GladLoader(GladLoader &other) = delete;
         GladLoader &operator=(GladLoader &) = delete;

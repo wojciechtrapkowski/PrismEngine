@@ -9,6 +9,9 @@ set(SYSTEMS_SOURCES
     imgui_drawing_system.cpp
     present_system.cpp
     input_control_system.cpp
+    event_poll_system.cpp
+    camera_creation_system.cpp
+    fps_motion_control_system.cpp
 )
 
 set(SYSTEMS_HEADERS
@@ -17,6 +20,9 @@ set(SYSTEMS_HEADERS
     public/systems/imgui_drawing_system.hpp
     public/systems/present_system.hpp
     public/systems/input_control_system.hpp
+    public/systems/event_poll_system.hpp
+    public/systems/camera_creation_system.hpp
+    public/systems/fps_motion_control_system.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC
@@ -30,6 +36,8 @@ add_dependencies(
         glfw
         Prism_Resources
         Prism_Loaders
+        Prism_Events
+        Prism_Components
 )
 
 target_link_libraries(${PRISM_SYSTEMS_LIBRARY_NAME}
@@ -38,6 +46,8 @@ target_link_libraries(${PRISM_SYSTEMS_LIBRARY_NAME}
         glfw
         Prism_Resources
         Prism_Loaders
+        Prism_Events
+        Prism_Components
 )
 
 target_include_directories(${PRISM_SYSTEMS_LIBRARY_NAME}

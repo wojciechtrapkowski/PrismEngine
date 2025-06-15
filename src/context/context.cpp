@@ -1,9 +1,5 @@
 #include "context/context.hpp"
 
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
 #include "controllers/window_controller.hpp"
 
 #include "loaders/glad_loader.hpp"
@@ -11,6 +7,9 @@
 #include "loaders/mesh_loader.hpp"
 #include "loaders/shader_loader.hpp"
 
+#include "systems/camera_creation_system.hpp"
+#include "systems/event_poll_system.hpp"
+#include "systems/fps_motion_control_system.hpp"
 #include "systems/imgui_drawing_system.hpp"
 #include "systems/input_control_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
@@ -23,7 +22,6 @@
 
 namespace Prism::Context {
     void Context::RunEngine() {
-
         Controllers::WindowController windowController;
         windowController.Initialize();
 
@@ -37,7 +35,11 @@ namespace Prism::Context {
 
         Loaders::MeshLoader meshLoader{};
 
-        Systems::InputControlSystem inputControlSystem{};
+        Systems::InputControlSystem inputControlSystem{m_contextResources};
+        Systems::EventPollSystem eventPollSystem{m_contextResources};
+        Systems::CameraCreationSystem cameraCreationSystem{m_contextResources};
+        Systems::FpsMotionControlSystem fpsMotionControlSystem{
+            m_contextResources};
 
         Systems::ScreenClearingSystem screenClearingSystem{};
         Systems::MeshDrawingSystem meshDrawingSystem{};
@@ -60,23 +62,40 @@ namespace Prism::Context {
             std::cerr << "Couldn't load backpack model!" << std::endl;
         }
         auto &backpackModel = *backpackModelOpt;
+        auto backpackId = std::hash<const char *>{}("MeshResources/Backpack");
 
-        scene.AddNewMesh(std::move(backpackModel));
+        scene.AddNewMesh(backpackId, std::move(backpackModel));
 
         inputControlSystem.Initialize();
+        eventPollSystem.Initialize();
+        fpsMotionControlSystem.Initialize();
+        cameraCreationSystem.Initialize();
 
         screenClearingSystem.Initialize();
         meshDrawingSystem.Initialize();
         imGuiDrawingSystem.Initialize();
         presentSystem.Initialize();
 
+        float deltaTime = 0.0f;
+        float lastFrameTime = 0.0f;
+
+        // TODO: Add delta time to each interface
+
         while (!glfwWindowShouldClose(window)) {
+            float currentFrame = glfwGetTime();
+            deltaTime = currentFrame - lastFrameTime;
+            lastFrameTime = currentFrame;
+
+            eventPollSystem.Update();
             inputControlSystem.Update(window);
 
             screenClearingSystem.Update();
             meshDrawingSystem.Update();
             imGuiDrawingSystem.Update();
             presentSystem.Update();
+
+            cameraCreationSystem.Update(scene);
+            fpsMotionControlSystem.Update(deltaTime, scene);
 
             screenClearingSystem.Render();
             meshDrawingSystem.Render(scene);

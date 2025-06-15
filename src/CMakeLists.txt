@@ -9,6 +9,8 @@ add_subdirectory(shaders)
 add_subdirectory(resources)
 add_subdirectory(systems)
 add_subdirectory(models)
+add_subdirectory(events)
+add_subdirectory(components)
 
 # Link required libraries
 target_link_libraries(PrismMain
