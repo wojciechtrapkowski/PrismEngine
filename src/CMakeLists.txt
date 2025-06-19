@@ -1,10 +1,8 @@
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(DEBUG)
-else()
-    add_compile_definitions(RELEASE)
-endif()
+add_compile_definitions(
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<NOT:$<CONFIG:Debug>>:RELEASE>
+)
 
-# Create an executable from main.cpp
 add_executable(PrismMain main.cpp)
 
 # Add subdirectories

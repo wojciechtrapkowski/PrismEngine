@@ -17,14 +17,5 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Build the project
-cmake --build .
-
-REM Check if build succeeded
-if errorlevel 1 (
-    echo Build failed!
-    exit /b 1
-)
-
-echo Build succeeded!
+echo Setup succeeded!
 pause

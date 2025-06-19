@@ -22,5 +22,8 @@ foreach(SHADER_FILE ${SHADER_FILES})
     list(APPEND SHADER_COPIED_FILES ${OUTPUT})
 endforeach()
 
-# Create a custom target that depends on all copied shaders
+
+# Custom target to copy shader files at build time
 add_custom_target(Prism_Shaders ALL DEPENDS ${SHADER_COPIED_FILES})
+
+target_sources(Prism_Shaders PRIVATE ${SHADER_FILES})
