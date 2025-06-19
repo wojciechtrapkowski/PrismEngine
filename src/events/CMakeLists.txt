@@ -5,6 +5,7 @@ set(PRISM_EVENTS_LIBRARY_NAME Prism_Events)
 
 set(EVENTS_HEADERS
     public/events/move_events.hpp
+    public/events/window_resize_event.hpp
 )
 
 add_library(${PRISM_EVENTS_LIBRARY_NAME} INTERFACE

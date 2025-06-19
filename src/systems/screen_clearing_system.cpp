@@ -1,5 +1,7 @@
 #include "systems/screen_clearing_system.hpp"
 
+#include "utils/opengl_debug.hpp"
+
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
@@ -20,9 +22,9 @@ namespace Prism::Systems {
     };
 
     void ScreenClearingSystem::Render() {
-        glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
-                     CLEAR_COLOR.w);
+        GLCheck(glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
+                             CLEAR_COLOR.w));
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        GLCheck(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     }
 } // namespace Prism::Systems

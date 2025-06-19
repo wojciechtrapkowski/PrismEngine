@@ -19,7 +19,7 @@ namespace Prism::Events {
     };
 
     struct MouseMoveEvent {
-        std::pair<double, double> delta;
+        std::pair<double, double> position;
     };
 
     struct MouseButtonPressEvent {

@@ -44,7 +44,7 @@ namespace Prism::Systems {
             m_mouseButtonToStateMap;
 
 
-        std::pair<double, double> m_mousePosition;
-        std::pair<double, double> m_mousePositionDelta;
+        std::pair<double, double> m_mousePosition = {};
+        std::pair<double, double> m_mousePositionDelta = {};
     };
 }; // namespace Prism::Systems

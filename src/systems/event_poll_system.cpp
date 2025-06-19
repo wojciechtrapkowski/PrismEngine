@@ -1,5 +1,7 @@
 #include "systems/event_poll_system.hpp"
 
+#include "utils/opengl_debug.hpp"
+
 namespace Prism::Systems {
     namespace {}; // namespace
 
@@ -12,7 +14,7 @@ namespace Prism::Systems {
     };
 
     void EventPollSystem::Update() {
-        glfwPollEvents();
+        GLCheck(glfwPollEvents());
         m_contextResources.dispatcher.update();
     };
 } // namespace Prism::Systems

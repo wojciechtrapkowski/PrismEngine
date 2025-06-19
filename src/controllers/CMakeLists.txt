@@ -26,6 +26,7 @@ target_link_libraries(${PRISM_CONTROLLERS_LIBRARY_NAME}
     PUBLIC
         glad
         glfw
+        Prism_Utils
 )
 
 target_include_directories(${PRISM_CONTROLLERS_LIBRARY_NAME}

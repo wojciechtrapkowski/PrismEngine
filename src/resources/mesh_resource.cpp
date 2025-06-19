@@ -47,7 +47,11 @@ namespace Prism::Resources {
 
     MeshResource::~MeshResource() {
         if (m_vertexBuffer != 0) {
-            glDeleteVertexArrays(1, &m_vertexBuffer);
+            glDeleteVertexArrays(1, &m_vertexArrayObject);
+        }
+
+        if (m_vertexBuffer != 0) {
+            glDeleteBuffers(1, &m_vertexBuffer);
         }
 
         if (m_indexBuffer != 0) {

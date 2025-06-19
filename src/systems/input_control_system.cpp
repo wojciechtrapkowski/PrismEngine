@@ -47,7 +47,7 @@ namespace Prism::Systems {
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
             dispatcher.enqueue<Events::MouseMoveEvent>(
-                Events::MouseMoveEvent{.delta = {xpos, ypos}});
+                Events::MouseMoveEvent{.position = {xpos, ypos}});
         }
 
         void handleMouseButtonPress(entt::dispatcher &dispatcher,
@@ -73,9 +73,7 @@ namespace Prism::Systems {
         Resources::ContextResources &contextResources)
         : m_contextResources(contextResources) {};
 
-    void InputControlSystem::Initialize() {
-
-    };
+    void InputControlSystem::Initialize() {};
 
     void InputControlSystem::Update(GLFWwindow *window) {
         auto &dispatcher = m_contextResources.dispatcher;

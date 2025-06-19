@@ -12,6 +12,7 @@ set(SYSTEMS_SOURCES
     event_poll_system.cpp
     camera_creation_system.cpp
     fps_motion_control_system.cpp
+    common_uniform_update_system.cpp
 )
 
 set(SYSTEMS_HEADERS
@@ -23,6 +24,7 @@ set(SYSTEMS_HEADERS
     public/systems/event_poll_system.hpp
     public/systems/camera_creation_system.hpp
     public/systems/fps_motion_control_system.hpp
+    public/systems/common_uniform_update_system.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC
@@ -48,6 +50,7 @@ target_link_libraries(${PRISM_SYSTEMS_LIBRARY_NAME}
         Prism_Loaders
         Prism_Events
         Prism_Components
+        Prism_Utils
 )
 
 target_include_directories(${PRISM_SYSTEMS_LIBRARY_NAME}

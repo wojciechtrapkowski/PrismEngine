@@ -35,7 +35,6 @@ namespace Prism::Systems {
 
         auto cameraEntity = registry.create();
         registry.emplace<Components::Tags::ActiveCamera>(cameraEntity);
-        registry.emplace<Components::Transform>(cameraEntity);
         registry.emplace<Components::FpsCameraControl>(cameraEntity);
 
         createFpsCamera(registry, cameraEntity);

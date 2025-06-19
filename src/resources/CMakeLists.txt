@@ -8,6 +8,7 @@ set(RESOURCES_SOURCES
     imgui_resource.cpp
     mesh_resource.cpp
     scene.cpp
+    common_resource.cpp
 )
 
 set(RESOURCES_HEADERS
@@ -17,6 +18,7 @@ set(RESOURCES_HEADERS
     public/resources/mesh_resource.hpp
     public/resources/scene.hpp
     public/resources/context_resources.hpp
+    public/resources/common_resource.hpp
 )
 
 add_library(${PRISM_RESOURCES_LIBRARY_NAME} STATIC

@@ -2,6 +2,8 @@
 
 #include "components/mesh.hpp"
 
+#include "utils/opengl_debug.hpp"
+
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
@@ -25,6 +27,10 @@ namespace Prism::Systems {
             throw std::runtime_error("Couldn't load shaders!");
         }
         m_shaderResource = std::move(*shaderProgramOpt);
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glDisable(GL_CULL_FACE);
     };
 
     void MeshDrawingSystem::Update() {
@@ -47,9 +53,9 @@ namespace Prism::Systems {
             }
             const auto &mesh = *meshOpt;
 
-            glBindVertexArray(mesh.get().GetVertexArrayObject());
-            glDrawElements(GL_TRIANGLES, mesh.get().GetIndexCount(),
-                           GL_UNSIGNED_INT, 0);
+            GLCheck(glBindVertexArray(mesh.get().GetVertexArrayObject()));
+            GLCheck(glDrawElements(GL_TRIANGLES, mesh.get().GetIndexCount(),
+                                   GL_UNSIGNED_INT, 0));
         }
     }
 } // namespace Prism::Systems

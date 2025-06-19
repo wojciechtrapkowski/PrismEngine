@@ -17,9 +17,9 @@
 namespace Prism::Systems {
     namespace {
         constexpr float PITCH_LIMIT = 89.0f;
-        constexpr glm::vec3 FORWARD_VECTOR = {0.0f, 0.0f, -1.0f};
-        constexpr glm::vec3 RIGHT_VECTOR = {1.0f, 0.0f, 0.0f};
-        constexpr glm::vec3 UP_VECTOR = {0.0f, 1.0f, 0.0f};
+        constexpr glm::vec3 WORLD_FORWARD_VECTOR = {0.0f, 0.0f, -1.0f};
+        constexpr glm::vec3 WORLD_RIGHT_VECTOR = {1.0f, 0.0f, 0.0f};
+        constexpr glm::vec3 WORLD_UP_VECTOR = {0.0f, 1.0f, 0.0f};
     } // namespace
 
     FpsMotionControlSystem::FpsMotionControlSystem(
@@ -53,10 +53,9 @@ namespace Prism::Systems {
             return;
         }
 
-        if (!registry
-                 .all_of<Components::FpsMotionControl, Components::Transform,
-                         Components::FpsCameraControl>(
-                     activeCameraView.front())) {
+        if (!registry.all_of<Components::FpsMotionControl,
+                             Components::FpsCameraControl>(
+                activeCameraView.front())) {
             return;
         }
 
@@ -66,21 +65,21 @@ namespace Prism::Systems {
             registry.get<Components::FpsMotionControl>(fpsCamera);
         auto &cameraControl =
             registry.get<Components::FpsCameraControl>(fpsCamera);
-        auto &transform = registry.get<Components::Transform>(fpsCamera);
 
-        auto &pitch = fpsMotionControl.pitch;
-        auto &yaw = fpsMotionControl.yaw;
+        auto &cameraPosition = fpsMotionControl.cameraPosition;
+        auto &cameraForward = fpsMotionControl.cameraForward;
+        auto &cameraRight = fpsMotionControl.cameraRight;
+        auto &cameraUp = fpsMotionControl.cameraUp;
 
         if (m_mouseButtonToStateMap[Events::MoveEvents::MouseButton::Left] ==
             Events::MoveEvents::InputAction::Pressed) {
-
             float deltaX =
                 m_mousePositionDelta.first * cameraControl.mouseSensitivity;
             float deltaY =
                 m_mousePositionDelta.second * cameraControl.mouseSensitivity;
 
             fpsMotionControl.yaw += deltaX;
-            fpsMotionControl.pitch -= deltaY;
+            fpsMotionControl.pitch += deltaY;
 
             if (fpsMotionControl.pitch > PITCH_LIMIT) {
                 fpsMotionControl.pitch = PITCH_LIMIT;
@@ -91,60 +90,55 @@ namespace Prism::Systems {
             }
         }
 
+        float yaw = glm::radians(fpsMotionControl.yaw);
+        float pitch = glm::radians(fpsMotionControl.pitch);
 
-        glm::mat4 rotationMat =
-            glm::eulerAngleXYZ(glm::radians(fpsMotionControl.pitch),
-                               glm::radians(fpsMotionControl.yaw), 0.0f);
+        cameraForward.x = cos(yaw) * cos(pitch);
+        cameraForward.y = sin(pitch);
+        cameraForward.z = cos(pitch) * sin(yaw);
+        cameraForward = glm::normalize(cameraForward);
 
-        glm::vec3 forward = -glm::vec3(rotationMat[2]);
-        glm::vec3 right = glm::vec3(rotationMat[0]);
+        cameraRight =
+            glm::normalize(glm::cross(cameraForward, WORLD_UP_VECTOR));
 
-        glm::vec3 moveDirection{0.f};
+        cameraUp = glm::normalize(glm::cross(cameraRight, cameraForward));
 
         if (m_keyToStateMap[Events::MoveEvents::Keys::W] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(0.0, 0.0, -1.0f);
+            cameraPosition +=
+                cameraForward * cameraControl.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::S] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(0.0, 0.0, 1.0f);
+            cameraPosition -=
+                cameraForward * cameraControl.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::A] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(-1.0, 0.0, 0.0f);
+            cameraPosition -= cameraRight * cameraControl.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::D] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(1.0, 0.0, 0.0f);
+            cameraPosition += cameraRight * cameraControl.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::SPACE] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(0.0, 1.0, 0.0f);
+            cameraPosition += cameraUp * cameraControl.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::SHIFT] ==
             Events::MoveEvents::InputAction::Pressed) {
-            moveDirection += glm::vec3(0.0, -1.0, 0.0f);
+            cameraPosition -= cameraUp * cameraControl.moveSpeed * deltaTime;
         }
-
-        moveDirection = glm::normalize(moveDirection);
-
-        glm::vec3 moveVector =
-            glm::normalize(moveDirection.z * forward + moveDirection.x * right +
-                           moveDirection.y * UP_VECTOR);
-
-        glm::vec3 cameraPosition = glm::vec3(transform.transform[3]);
-        if (glm::length(moveDirection) > 0.0f) {
-            glm::vec3 displacement =
-                moveVector * cameraControl.moveSpeed * deltaTime;
-            cameraPosition += displacement;
-        }
-
-        transform.transform = glm::translate(rotationMat, cameraPosition);
 
         m_mousePositionDelta = {0.f, 0.f};
         m_keyToStateMap.clear();
         m_mouseButtonToStateMap.clear();
-    };
+
+        std::cout << "Current camera position: " << cameraPosition.x << " "
+                  << cameraPosition.y << " " << cameraPosition.z << std::endl;
+        std::cout << "Current yaw: " << fpsMotionControl.yaw
+                  << ", Current pitch: " << fpsMotionControl.pitch << std::endl;
+    }
 
     void
     FpsMotionControlSystem::onKeyPressed(const Events::KeyPressEvent &event) {
@@ -158,10 +152,15 @@ namespace Prism::Systems {
 
     void
     FpsMotionControlSystem::onMouseMoved(const Events::MouseMoveEvent &event) {
-        m_mousePositionDelta = {event.delta.first - m_mousePosition.first,
-                                event.delta.second - m_mousePosition.second};
 
-        m_mousePosition = {event.delta.first, event.delta.second};
+        m_mousePositionDelta = {event.position.first - m_mousePosition.first,
+                                m_mousePosition.second - event.position.second};
+
+        // Skip first update.
+        if (m_mousePosition == std::pair<double, double>{0, 0}) {
+            m_mousePositionDelta = {0, 0};
+        }
+        m_mousePosition = {event.position.first, event.position.second};
     }
 
 } // namespace Prism::Systems
