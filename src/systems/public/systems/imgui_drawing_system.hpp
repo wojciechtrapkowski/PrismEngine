@@ -1,9 +1,12 @@
 #pragma once
 
+#include "resources/context_resources.hpp"
+#include "resources/scene.hpp"
+
 namespace Prism::Systems {
     class ImGuiDrawingSystem {
       public:
-        ImGuiDrawingSystem() = default;
+        ImGuiDrawingSystem(Resources::ContextResources &contextResources);
         ~ImGuiDrawingSystem() = default;
 
         ImGuiDrawingSystem(ImGuiDrawingSystem &other) = delete;
@@ -14,10 +17,11 @@ namespace Prism::Systems {
 
         void Initialize();
 
-        void Update();
+        void Update(float deltaTime, Resources::Scene &scene);
 
-        void Render();
+        void Render(float deltaTime, Resources::Scene &scene);
 
       private:
+        Resources::ContextResources &m_contextResources;
     };
 }; // namespace Prism::Systems

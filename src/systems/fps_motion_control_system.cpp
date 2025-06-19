@@ -133,11 +133,6 @@ namespace Prism::Systems {
         m_mousePositionDelta = {0.f, 0.f};
         m_keyToStateMap.clear();
         m_mouseButtonToStateMap.clear();
-
-        std::cout << "Current camera position: " << cameraPosition.x << " "
-                  << cameraPosition.y << " " << cameraPosition.z << std::endl;
-        std::cout << "Current yaw: " << fpsMotionControl.yaw
-                  << ", Current pitch: " << fpsMotionControl.pitch << std::endl;
     }
 
     void

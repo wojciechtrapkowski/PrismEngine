@@ -75,8 +75,9 @@ namespace Prism::Systems {
 
     void InputControlSystem::Initialize() {};
 
-    void InputControlSystem::Update(GLFWwindow *window) {
+    void InputControlSystem::Update(float deltaTime) {
         auto &dispatcher = m_contextResources.dispatcher;
+        auto window = m_contextResources.window.get();
 
         handleKeyPress(dispatcher, window);
         handleMouseMovement(dispatcher, window);

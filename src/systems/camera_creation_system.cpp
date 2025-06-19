@@ -23,7 +23,8 @@ namespace Prism::Systems {
 
     };
 
-    void CameraCreationSystem::Update(Resources::Scene &scene) {
+    void CameraCreationSystem::Update(float deltaTime,
+                                      Resources::Scene &scene) {
         // In the future there will be more camera types.
 
         auto &registry = scene.GetRegistry();

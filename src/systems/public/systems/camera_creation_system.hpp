@@ -21,7 +21,7 @@ namespace Prism::Systems {
 
         void Initialize();
 
-        void Update(Resources::Scene &scene);
+        void Update(float deltaTime, Resources::Scene &scene);
 
       private:
         Resources::ContextResources &m_contextResources;

@@ -20,6 +20,10 @@ namespace Prism::Systems {
         };
     }
 
+    MeshDrawingSystem::MeshDrawingSystem(
+        Resources::ContextResources &contextResources)
+        : m_contextResources(contextResources) {};
+
     void MeshDrawingSystem::Initialize() {
         Loaders::ShaderLoader shaderLoader;
         auto shaderProgramOpt = shaderLoader(SHADERS_SOURCES);
@@ -33,11 +37,11 @@ namespace Prism::Systems {
         glDisable(GL_CULL_FACE);
     };
 
-    void MeshDrawingSystem::Update() {
+    void MeshDrawingSystem::Update(float deltaTime, Resources::Scene &scene) {
 
     };
 
-    void MeshDrawingSystem::Render(Resources::Scene &scene) {
+    void MeshDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {
         glUseProgram(m_shaderResource->GetShaderProgram());
 
         auto &registry = scene.GetRegistry();

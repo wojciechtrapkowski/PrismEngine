@@ -20,19 +20,19 @@ add_dependencies(
     ${PRISM_CONTEXT_LIBRARY_NAME}
         EnTT
         Prism_Loaders
-        Prism_Controllers
         Prism_Shaders
         Prism_Systems
         Prism_Resources
+        Prism_Managers
 )
 
 target_link_libraries(${PRISM_CONTEXT_LIBRARY_NAME}
     PUBLIC
         EnTT
         Prism_Loaders
-        Prism_Controllers
         Prism_Systems
         Prism_Resources
+        Prism_Managers
 )
 
 target_include_directories(${PRISM_CONTEXT_LIBRARY_NAME}

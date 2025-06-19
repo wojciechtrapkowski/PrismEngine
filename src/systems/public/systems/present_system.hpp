@@ -4,10 +4,13 @@
 
 #include <GLFW/glfw3.h>
 
+#include "resources/context_resources.hpp"
+#include "resources/scene.hpp"
+
 namespace Prism::Systems {
     class PresentSystem {
       public:
-        PresentSystem() = default;
+        PresentSystem(Resources::ContextResources &contextResources);
         ~PresentSystem() = default;
 
         PresentSystem(PresentSystem &other) = delete;
@@ -18,10 +21,11 @@ namespace Prism::Systems {
 
         void Initialize();
 
-        void Update();
+        void Update(float deltaTime, Resources::Scene &scene);
 
-        void Render(GLFWwindow *window);
+        void Render(float deltaTime, Resources::Scene &scene);
 
       private:
+        Resources::ContextResources &m_contextResources;
     };
 }; // namespace Prism::Systems

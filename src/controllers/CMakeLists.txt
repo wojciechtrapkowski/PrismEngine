@@ -4,11 +4,9 @@ project(Prism_Controllers VERSION 1.0.0 LANGUAGES CXX)
 set(PRISM_CONTROLLERS_LIBRARY_NAME Prism_Controllers)
 
 set(CONTROLLERS_SOURCES
-    window_controller.cpp
 )
 
 set(CONTROLLERS_HEADERS
-    public/controllers/window_controller.hpp
 )
 
 add_library(${PRISM_CONTROLLERS_LIBRARY_NAME} STATIC

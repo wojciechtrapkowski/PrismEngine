@@ -4,7 +4,7 @@ add_executable(PrismMain main.cpp)
 # Add subdirectories
 add_subdirectory(context)
 add_subdirectory(loaders)
-add_subdirectory(controllers)
+# add_subdirectory(controllers)
 add_subdirectory(shaders)
 add_subdirectory(resources)
 add_subdirectory(systems)
@@ -12,6 +12,7 @@ add_subdirectory(models)
 add_subdirectory(events)
 add_subdirectory(components)
 add_subdirectory(utils)
+add_subdirectory(managers)
 
 # Link required libraries
 target_link_libraries(PrismMain

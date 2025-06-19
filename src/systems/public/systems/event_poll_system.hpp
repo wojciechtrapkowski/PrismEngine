@@ -20,7 +20,7 @@ namespace Prism::Systems {
 
         void Initialize();
 
-        void Update();
+        void Update(float deltaTime);
 
       private:
         Resources::ContextResources &m_contextResources;

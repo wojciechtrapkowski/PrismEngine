@@ -1,36 +1,43 @@
 #include "context/context.hpp"
 
-#include "controllers/window_controller.hpp"
-
 #include "loaders/glad_loader.hpp"
 #include "loaders/imgui_loader.hpp"
 #include "loaders/mesh_loader.hpp"
 #include "loaders/shader_loader.hpp"
+#include "loaders/window_loader.hpp"
 
 #include "systems/camera_creation_system.hpp"
 #include "systems/common_uniform_update_system.hpp"
 #include "systems/event_poll_system.hpp"
 #include "systems/fps_motion_control_system.hpp"
-#include "systems/imgui_drawing_system.hpp"
 #include "systems/input_control_system.hpp"
-#include "systems/mesh_drawing_system.hpp"
-#include "systems/present_system.hpp"
-#include "systems/screen_clearing_system.hpp"
 
 #include "events/window_resize_event.hpp"
+
+#include "managers/scene_draw_systems_manager.hpp"
+#include "managers/scene_update_systems_manager.hpp"
 
 #include "resources/scene.hpp"
 
 #include <iostream>
 
 namespace Prism::Context {
-    namespace {} // namespace
+    namespace {
+        void printDebugInfo() {
+            const GLubyte *version = glGetString(GL_VERSION);
+            std::cout << "OpenGL Version: " << version << std::endl;
+        }
+    } // namespace
 
     void Context::RunEngine() {
-        Controllers::WindowController windowController;
-        windowController.Initialize();
+        Loaders::WindowLoader windowLoader;
 
-        auto window = windowController.GetWindow();
+        {
+            auto window = windowLoader();
+            m_contextResources.window = std::move(window);
+        }
+
+        auto *window = m_contextResources.window.get();
 
         Loaders::GladLoader gladLoader;
         gladLoader();
@@ -38,96 +45,72 @@ namespace Prism::Context {
         Loaders::ImGuiLoader imGuiLoader;
         auto imguiResource = imGuiLoader(window);
 
-        Loaders::MeshLoader meshLoader{};
+
+        Systems::EventPollSystem eventPollSystem{m_contextResources};
 
         Systems::InputControlSystem inputControlSystem{m_contextResources};
-        Systems::EventPollSystem eventPollSystem{m_contextResources};
-        Systems::CameraCreationSystem cameraCreationSystem{m_contextResources};
-        Systems::FpsMotionControlSystem fpsMotionControlSystem{
-            m_contextResources};
-        Systems::CommonUniformUpdateSystem commonUniformUpdateSystem{
+
+        Managers::SceneDrawSystemsManager sceneDrawSystemsManager{
             m_contextResources};
 
-        Systems::ScreenClearingSystem screenClearingSystem{};
-        Systems::MeshDrawingSystem meshDrawingSystem{};
-        Systems::ImGuiDrawingSystem imGuiDrawingSystem{};
-        Systems::PresentSystem presentSystem{};
+        Managers::SceneUpdateSystemsManager sceneUpdateSystemsManager{
+            m_contextResources};
 
-        // TODO: Make it based on debug
-        const GLubyte *version = glGetString(GL_VERSION);
-        std::cout << "OpenGL Version: " << version << std::endl;
-
+        Loaders::MeshLoader meshLoader{};
 
         Resources::Scene scene{};
-        // Resources::MeshResource::MeshDescriptor meshDescriptor{
-        //     .vertices = {{glm::vec3{-0.5f, -0.5f, 0.1f}},
-        //                  {glm::vec3{0.5f, -0.5f, 0.1f}},
-        //                  {glm::vec3{0.0f, 0.5f, 0.1f}}},
-        //     .indices = {{0}, {1}, {2}}};
 
+        auto backpackModelOpt = meshLoader("backpack.obj");
+        if (!backpackModelOpt) {
+            std::cerr << "Couldn't load backpack model!" << std::endl;
+        } else {
+            auto &backpackModel = *backpackModelOpt;
+            auto backpackId =
+                std::hash<const char *>{}("MeshResources/Backpack");
+            scene.AddNewMesh(backpackId, std::move(backpackModel));
 
-        // auto triangleId = std::hash<const char
-        // *>{}("MeshResources/TriangleId");
+            std::cout << "Loaded backpack model!" << std::endl;
+        }
 
-        // scene.AddNewMesh(cubeId, std::make_unique<Resources::MeshResource>(
-        //                              std::move(meshDescriptor)));
-
-         auto backpackModelOpt = meshLoader("backpack.obj");
-         if (!backpackModelOpt) {
-             std::cerr << "Couldn't load backpack model!" << std::endl;
-         }
-         auto &backpackModel = *backpackModelOpt;
-         auto backpackId = std::hash<const char*>{}("MeshResources/Backpack");
-         scene.AddNewMesh(backpackId, std::move(backpackModel));
-
-        //auto cubeModelOpt = meshLoader("cube.obj");
-        //if (!cubeModelOpt) {
-        //    std::cerr << "Couldn't load cube model!" << std::endl;
-        //}
-        //else {
-        //    auto &cubeModel = *cubeModelOpt;
-        //    auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
-        //    scene.AddNewMesh(cubeId, std::move(cubeModel));
-        //}
+        // auto cubeModelOpt = meshLoader("cube.obj");
+        // if (!cubeModelOpt) {
+        //     std::cerr << "Couldn't load cube model!" << std::endl;
+        // }
+        // else {
+        //     auto &cubeModel = *cubeModelOpt;
+        //     auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
+        //     scene.AddNewMesh(cubeId, std::move(cubeModel));
+        // }
         //
-        inputControlSystem.Initialize();
+
         eventPollSystem.Initialize();
-        fpsMotionControlSystem.Initialize();
-        cameraCreationSystem.Initialize();
-        commonUniformUpdateSystem.Initialize();
+        inputControlSystem.Initialize();
 
-        screenClearingSystem.Initialize();
-        meshDrawingSystem.Initialize();
-        imGuiDrawingSystem.Initialize();
-        presentSystem.Initialize();
+        sceneUpdateSystemsManager.Initialize();
 
+        sceneDrawSystemsManager.Initialize();
 
         float deltaTime = 0.0f;
         float lastFrameTime = 0.0f;
 
-        // TODO: Add delta time to each interface
+        // In the future we have to add debug & release mode.
+#ifdef DEBUG
+        printDebugInfo();
+#endif
 
         while (!glfwWindowShouldClose(window)) {
             float currentFrame = glfwGetTime();
             deltaTime = currentFrame - lastFrameTime;
             lastFrameTime = currentFrame;
 
-            eventPollSystem.Update();
-            inputControlSystem.Update(window);
+            eventPollSystem.Update(deltaTime);
+            inputControlSystem.Update(deltaTime);
 
-            screenClearingSystem.Update();
-            meshDrawingSystem.Update();
-            imGuiDrawingSystem.Update();
-            presentSystem.Update();
+            sceneUpdateSystemsManager.Update(deltaTime, scene);
 
-            cameraCreationSystem.Update(scene);
-            fpsMotionControlSystem.Update(deltaTime, scene);
-            commonUniformUpdateSystem.Update(window, scene);
+            sceneDrawSystemsManager.Update(deltaTime, scene);
 
-            screenClearingSystem.Render();
-            meshDrawingSystem.Render(scene);
-            imGuiDrawingSystem.Render();
-            presentSystem.Render(window);
+            sceneDrawSystemsManager.Render(deltaTime, scene);
         }
 
 

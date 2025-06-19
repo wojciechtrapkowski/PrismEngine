@@ -42,8 +42,10 @@ namespace Prism::Systems {
 
     };
 
-    void CommonUniformUpdateSystem::Update(GLFWwindow *window,
+    void CommonUniformUpdateSystem::Update(float deltaTime,
                                            Resources::Scene &scene) {
+        auto window = m_contextResources.window.get();
+
         auto &registry = scene.GetRegistry();
 
         auto activeCameraView = registry.view<Components::Tags::ActiveCamera>();
@@ -74,11 +76,9 @@ namespace Prism::Systems {
         GLCheck(glfwGetFramebufferSize(window, &width, &height));
         glViewport(0, 0, width, height);
 
-
         float aspectRatio =
             static_cast<float>(width) / static_cast<float>(height);
 
-        std::cout << "Width: " << width << ", Height: " << height << std::endl;
         glm::mat4 projection =
             glm::perspective(glm::radians(cameraSettings.fov), aspectRatio,
                              cameraSettings.nearPlane, cameraSettings.farPlane);
@@ -86,8 +86,7 @@ namespace Prism::Systems {
         Resources::CommonResource::ShaderData shaderData{};
         shaderData.view = std::move(view);
         shaderData.projection = std::move(projection);
-        static_assert(sizeof(Resources::CommonResource::ShaderData) == 128,
-                      "ShaderData must be the size of two glm::mat4");
+
         GLCheck(
             glBindBuffer(GL_UNIFORM_BUFFER, m_commonResource.GetUboHandle()));
         GLCheck(glBufferSubData(

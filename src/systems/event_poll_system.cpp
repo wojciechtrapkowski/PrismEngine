@@ -13,7 +13,7 @@ namespace Prism::Systems {
 
     };
 
-    void EventPollSystem::Update() {
+    void EventPollSystem::Update(float deltaTime) {
         GLCheck(glfwPollEvents());
         m_contextResources.dispatcher.update();
     };

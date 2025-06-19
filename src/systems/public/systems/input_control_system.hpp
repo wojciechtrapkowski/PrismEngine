@@ -20,7 +20,7 @@ namespace Prism::Systems {
 
         void Initialize();
 
-        void Update(GLFWwindow *window);
+        void Update(float deltaTime);
 
       private:
         Resources::ContextResources &m_contextResources;

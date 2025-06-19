@@ -5,11 +5,15 @@
 #include <imgui_impl_opengl3.h>
 
 namespace Prism::Systems {
+    ImGuiDrawingSystem::ImGuiDrawingSystem(
+        Resources::ContextResources &contextResources)
+        : m_contextResources(contextResources) {};
+
     void ImGuiDrawingSystem::Initialize() {
 
     };
 
-    void ImGuiDrawingSystem::Update() {
+    void ImGuiDrawingSystem::Update(float deltaTime, Resources::Scene &scene) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -20,7 +24,7 @@ namespace Prism::Systems {
         ImGui::End();
     };
 
-    void ImGuiDrawingSystem::Render() {
+    void ImGuiDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {
 
 
         ImGui::Render();

@@ -13,15 +13,21 @@ namespace Prism::Systems {
         ImVec4 CLEAR_COLOR = ImVec4(0.2f, 0.3f, 0.3f, 1.0f);
     }
 
+    ScreenClearingSystem::ScreenClearingSystem(
+        Resources::ContextResources &contextResources)
+        : m_contextResources(contextResources) {};
+
     void ScreenClearingSystem::Initialize() {
         // Nothing.
     };
 
-    void ScreenClearingSystem::Update() {
+    void ScreenClearingSystem::Update(float deltaTime,
+                                      Resources::Scene &scene) {
         // Nothing.
     };
 
-    void ScreenClearingSystem::Render() {
+    void ScreenClearingSystem::Render(float deltaTime,
+                                      Resources::Scene &scene) {
         GLCheck(glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
                              CLEAR_COLOR.w));
 
