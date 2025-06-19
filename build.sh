@@ -1,13 +1,20 @@
 #!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status
+set -e
+
+# Default build type
+BUILD_TYPE="Release"
+CLEAN=0
 
 # Parse command line arguments
-CLEAN=0
 for arg in "$@"; do
   case $arg in
     --clean)
       CLEAN=1
-      shift # Remove --clean from processing
+      shift
+      ;;
+    --debug)
+      BUILD_TYPE="Debug"
+      shift
       ;;
     *)
       # Unknown option
@@ -15,44 +22,42 @@ for arg in "$@"; do
   esac
 done
 
-# Clean if requested
+# Define build directory based on build type
+BUILD_DIR="build/$BUILD_TYPE"
+
 if [ $CLEAN -eq 1 ]; then
-  echo "[INFO] Cleaning build directory..."
-  rm -rf build
+  echo "[INFO] Cleaning build directory $BUILD_DIR..."
+  rm -rf "$BUILD_DIR"
   echo "[INFO] Build directory removed."
   exit 0
 fi
 
 # Create build directory
-mkdir -p build
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
-# Change to the build directory
-cd build
-
-# Only reconfigure if CMakeCache.txt does not exist
+# Configure if CMakeCache.txt doesn't exist
 if [ ! -f CMakeCache.txt ]; then
-  echo "[INFO] Configuring project..."
-  if ! cmake .. -DCMAKE_BUILD_TYPE=Debug; then
+  echo "[INFO] Configuring project with build type: $BUILD_TYPE ..."
+  if ! cmake ../.. -DCMAKE_BUILD_TYPE=$BUILD_TYPE; then
     echo "[ERROR] Configuration failed"
     exit 1
   fi
 fi
-# Get number of CPU cores for parallel builds
+
+# Get number of CPU cores
 if [[ "$(uname)" == "Darwin" ]]; then
-  # macOS
   CORES=$(sysctl -n hw.logicalcpu)
 else
-  # Linux and others
   CORES=$(nproc 2>/dev/null || echo 2)
 fi
 
 # Build the project
-echo "[INFO] Building project with $CORES cores..."
+echo "[INFO] Building project ($BUILD_TYPE) with $CORES cores..."
 if ! cmake --build . -- -j${CORES}; then
   echo "[ERROR] Build failed"
   exit 1
 fi
 
-# Return to the project root
-cd ..
-echo "[SUCCESS] Build completed. You can find the executable in the build/bin directory."
+cd ../..
+echo "[SUCCESS] Build ($BUILD_TYPE) completed. Executable is in $BUILD_DIR/bin."
