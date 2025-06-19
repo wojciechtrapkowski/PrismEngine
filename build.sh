@@ -2,7 +2,7 @@
 set -e
 
 # Default build type
-BUILD_TYPE="Release"
+BUILD_TYPE="Debug"
 CLEAN=0
 
 # Parse command line arguments
@@ -12,8 +12,8 @@ for arg in "$@"; do
       CLEAN=1
       shift
       ;;
-    --debug)
-      BUILD_TYPE="Debug"
+    --release)
+      BUILD_TYPE="Release"
       shift
       ;;
     *)

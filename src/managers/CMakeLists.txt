@@ -28,6 +28,7 @@ target_link_libraries(${PRISM_MANAGERS_LIBRARY_NAME}
     PUBLIC
         Prism_Systems
         Prism_Resources
+        Prism_UI
 )
 
 target_include_directories(${PRISM_MANAGERS_LIBRARY_NAME}

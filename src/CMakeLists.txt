@@ -17,6 +17,7 @@ add_subdirectory(events)
 add_subdirectory(components)
 add_subdirectory(utils)
 add_subdirectory(managers)
+add_subdirectory(ui)
 
 # Link required libraries
 target_link_libraries(PrismMain

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "systems/imgui_drawing_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
 #include "systems/present_system.hpp"
 #include "systems/screen_clearing_system.hpp"
+#include "systems/ui_drawing_system.hpp"
 
 #include "resources/context_resources.hpp"
 #include "resources/scene.hpp"
@@ -31,7 +31,7 @@ namespace Prism::Managers {
       private:
         Systems::ScreenClearingSystem screenClearingSystem;
         Systems::MeshDrawingSystem meshDrawingSystem;
-        Systems::ImGuiDrawingSystem imGuiDrawingSystem;
+        Systems::UIDrawingSystem uiDrawingSystem;
         Systems::PresentSystem presentSystem;
     };
 

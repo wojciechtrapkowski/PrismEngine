@@ -2,7 +2,7 @@
 set -e # Exit immediately if a command exits with a non-zero status
 
 # Default build type
-BUILD_TYPE="Release"
+BUILD_TYPE="Debug"
 
 # Parse command line arguments
 REBUILD=0
