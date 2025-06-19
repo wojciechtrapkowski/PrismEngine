@@ -45,7 +45,6 @@ namespace Prism::Context {
         Loaders::ImGuiLoader imGuiLoader;
         auto imguiResource = imGuiLoader(window);
 
-
         Systems::EventPollSystem eventPollSystem{m_contextResources};
 
         Systems::InputControlSystem inputControlSystem{m_contextResources};
@@ -67,21 +66,19 @@ namespace Prism::Context {
             auto &backpackModel = *backpackModelOpt;
             auto backpackId =
                 std::hash<const char *>{}("MeshResources/Backpack");
-            scene.AddNewMesh(backpackId, std::move(backpackModel));
+            scene.AddNewMesh(backpackId, "Backpack", std::move(backpackModel));
 
             std::cout << "Loaded backpack model!" << std::endl;
         }
 
-        // auto cubeModelOpt = meshLoader("cube.obj");
-        // if (!cubeModelOpt) {
-        //     std::cerr << "Couldn't load cube model!" << std::endl;
-        // }
-        // else {
-        //     auto &cubeModel = *cubeModelOpt;
-        //     auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
-        //     scene.AddNewMesh(cubeId, std::move(cubeModel));
-        // }
-        //
+        auto cubeModelOpt = meshLoader("cube.obj");
+        if (!cubeModelOpt) {
+            std::cerr << "Couldn't load cube model!" << std::endl;
+        } else {
+            auto &cubeModel = *cubeModelOpt;
+            auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
+            scene.AddNewMesh(cubeId, "Cube", std::move(cubeModel));
+        }
 
         eventPollSystem.Initialize();
         inputControlSystem.Initialize();
@@ -93,7 +90,6 @@ namespace Prism::Context {
         float deltaTime = 0.0f;
         float lastFrameTime = 0.0f;
 
-        // In the future we have to add debug & release mode.
 #ifdef DEBUG
         printDebugInfo();
 #endif

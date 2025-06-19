@@ -1,12 +1,15 @@
 #include "systems/mesh_drawing_system.hpp"
 
 #include "components/mesh.hpp"
+#include "components/transform.hpp"
 
 #include "utils/opengl_debug.hpp"
 
 #include <glad/glad.h>
 
 #include <GLFW/glfw3.h>
+
+#include <glm/gtc/type_ptr.hpp>
 
 #include <filesystem>
 #include <iostream>
@@ -42,20 +45,33 @@ namespace Prism::Systems {
     };
 
     void MeshDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {
-        glUseProgram(m_shaderResource->GetShaderProgram());
 
         auto &registry = scene.GetRegistry();
 
-        auto meshView = registry.view<Components::Mesh>();
+        auto meshTransformView =
+            registry.view<Components::Mesh, Components::Transform>();
 
-        for (const auto &meshEntity : meshView) {
+        for (const auto &meshEntity : meshTransformView) {
+            glUseProgram(m_shaderResource->GetShaderProgram());
+
             const auto &meshResourceId =
-                meshView.get<Components::Mesh>(meshEntity).resourceId;
+                meshTransformView.get<Components::Mesh>(meshEntity).resourceId;
+
+            const auto &transform =
+                meshTransformView.get<Components::Transform>(meshEntity)
+                    .transform;
+
             const auto &meshOpt = scene.GetMesh(meshResourceId);
             if (!meshOpt) {
                 continue;
             }
             const auto &mesh = *meshOpt;
+
+            GLint modelLoc = glGetUniformLocation(
+                m_shaderResource->GetShaderProgram(), "model");
+
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
+                               glm::value_ptr(transform));
 
             GLCheck(glBindVertexArray(mesh.get().GetVertexArrayObject()));
             GLCheck(glDrawElements(GL_TRIANGLES, mesh.get().GetIndexCount(),

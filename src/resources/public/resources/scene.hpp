@@ -26,7 +26,7 @@ namespace Prism::Resources {
         std::optional<std::reference_wrapper<const MeshResource>>
         GetMesh(Resources::MeshResource::ID resourceId);
 
-        void AddNewMesh(Resources::MeshResource::ID id,
+        void AddNewMesh(Resources::MeshResource::ID id, std::string name,
                         std::unique_ptr<Resources::MeshResource> meshResource);
 
         void RemoveMesh(Resources::MeshResource::ID meshId);

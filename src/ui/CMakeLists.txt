@@ -23,15 +23,19 @@ add_library(${PRISM_UI_LIBRARY_NAME} STATIC
 add_dependencies(
     ${PRISM_UI_LIBRARY_NAME}
         imgui
+        EnTT
         Prism_Resources
         Prism_Loaders
+        Prism_Components
 )
 
 target_link_libraries(${PRISM_UI_LIBRARY_NAME}
     PUBLIC
         imgui
+        EnTT
         Prism_Resources
         Prism_Loaders
+        Prism_Components
 )
 
 target_include_directories(${PRISM_UI_LIBRARY_NAME}
