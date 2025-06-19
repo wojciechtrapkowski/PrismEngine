@@ -72,22 +72,24 @@ namespace Prism::Context {
         // scene.AddNewMesh(cubeId, std::make_unique<Resources::MeshResource>(
         //                              std::move(meshDescriptor)));
 
-        // auto backpackModelOpt = meshLoader("backpack.obj");
-        // if (!backpackModelOpt) {
-        //     std::cerr << "Couldn't load backpack model!" << std::endl;
-        // }
-        // auto &backpackModel = *backpackModelOpt;
-        // auto backpackId = std::hash<const char*>{}("MeshResources/Backpack");
-        // scene.AddNewMesh(backpackId, std::move(backpackModel));
+         auto backpackModelOpt = meshLoader("backpack.obj");
+         if (!backpackModelOpt) {
+             std::cerr << "Couldn't load backpack model!" << std::endl;
+         }
+         auto &backpackModel = *backpackModelOpt;
+         auto backpackId = std::hash<const char*>{}("MeshResources/Backpack");
+         scene.AddNewMesh(backpackId, std::move(backpackModel));
 
-        auto cubeModelOpt = meshLoader("cube.obj");
-        if (!cubeModelOpt) {
-            std::cerr << "Couldn't load cube model!" << std::endl;
-        }
-        auto &cubeModel = *cubeModelOpt;
-        auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
-        scene.AddNewMesh(cubeId, std::move(cubeModel));
-
+        //auto cubeModelOpt = meshLoader("cube.obj");
+        //if (!cubeModelOpt) {
+        //    std::cerr << "Couldn't load cube model!" << std::endl;
+        //}
+        //else {
+        //    auto &cubeModel = *cubeModelOpt;
+        //    auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
+        //    scene.AddNewMesh(cubeId, std::move(cubeModel));
+        //}
+        //
         inputControlSystem.Initialize();
         eventPollSystem.Initialize();
         fpsMotionControlSystem.Initialize();

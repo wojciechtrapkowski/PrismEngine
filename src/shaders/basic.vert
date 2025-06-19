@@ -2,8 +2,8 @@
 
 layout(std140) uniform CommonUniforms
 {
-    mat4 view;
     mat4 projection;
+    mat4 view;
 } commonUniforms;
 
 layout (location = 0) in vec3 aPos;

@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <vector>
+#include <array>
 
 namespace Prism::Loaders {
     namespace {

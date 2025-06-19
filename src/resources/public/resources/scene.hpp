@@ -6,6 +6,9 @@
 
 #include "resources/resource.hpp"
 
+#include <optional>
+#include <utility>
+
 namespace Prism::Resources {
     struct Scene : ResourceImpl<Scene> {
         Scene() = default;

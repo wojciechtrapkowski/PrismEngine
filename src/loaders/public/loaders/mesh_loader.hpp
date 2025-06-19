@@ -2,6 +2,10 @@
 
 #include "resources/mesh_resource.hpp"
 
+#include <optional>
+#include <utility>
+#include <string>
+
 namespace Prism::Loaders {
     struct MeshLoader {
         using result_type =
