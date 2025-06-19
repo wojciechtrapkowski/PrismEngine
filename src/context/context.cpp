@@ -104,6 +104,7 @@ namespace Prism::Context {
             lastFrameTime = currentFrame;
 
             eventPollSystem.Update(deltaTime);
+
             inputControlSystem.Update(deltaTime);
 
             sceneUpdateSystemsManager.Update(deltaTime, scene);
