@@ -4,6 +4,7 @@
 #include <imgui_internal.h>
 
 #include "components/mesh.hpp"
+#include "components/tags.hpp"
 #include "components/transform.hpp"
 
 namespace Prism::UI {
@@ -54,9 +55,29 @@ namespace Prism::UI {
             ImGuiTreeNodeFlags nodeFlags =
                 ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen;
 
-            if (ImGui::TreeNodeEx((void *)(intptr_t)meshNodeEntity, nodeFlags,
-                                  "%s", meshComponent.name.c_str())) {
+            if (registry.all_of<Components::Tags::SelectedNode>(
+                    meshNodeEntity)) {
+                nodeFlags |= ImGuiTreeNodeFlags_Selected;
+            }
 
+            bool isOpened =
+                ImGui::TreeNodeEx((void *)(intptr_t)meshNodeEntity, nodeFlags,
+                                  "%s", meshComponent.name.c_str());
+
+            if (ImGui::IsItemClicked()) {
+                auto selectedNodeView =
+                    registry.view<Components::Tags::SelectedNode>();
+                if (!selectedNodeView.empty()) {
+                    auto selectedNodeEntity = selectedNodeView.front();
+                    registry.remove<Components::Tags::SelectedNode>(
+                        selectedNodeEntity);
+                }
+
+                registry.emplace<Components::Tags::SelectedNode>(
+                    meshNodeEntity);
+            }
+
+            if (isOpened) {
                 renderTransformComponent(registry, meshNodeEntity);
 
                 // More components in the future...
