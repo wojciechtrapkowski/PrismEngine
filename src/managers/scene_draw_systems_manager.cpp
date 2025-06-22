@@ -5,11 +5,13 @@ namespace Prism::Managers {
         Resources::ContextResources &contextResources)
         : screenClearingSystem{contextResources},
           meshDrawingSystem{contextResources},
-          uiDrawingSystem{contextResources}, presentSystem{contextResources} {}
+          uiDrawingSystem{contextResources}, presentSystem{contextResources},
+          gizmoDrawingSystem{contextResources} {}
 
     void SceneDrawSystemsManager::Initialize() {
         screenClearingSystem.Initialize();
         meshDrawingSystem.Initialize();
+        gizmoDrawingSystem.Initialize();
         uiDrawingSystem.Initialize();
         presentSystem.Initialize();
     }
@@ -19,6 +21,7 @@ namespace Prism::Managers {
         screenClearingSystem.Update(deltaTime, scene);
         meshDrawingSystem.Update(deltaTime, scene);
         uiDrawingSystem.Update(deltaTime, scene);
+        gizmoDrawingSystem.Update(deltaTime, scene);
         presentSystem.Update(deltaTime, scene);
     }
 
@@ -26,6 +29,7 @@ namespace Prism::Managers {
                                          Resources::Scene &scene) {
         screenClearingSystem.Render(deltaTime, scene);
         meshDrawingSystem.Render(deltaTime, scene);
+        gizmoDrawingSystem.Render(deltaTime, scene);
         uiDrawingSystem.Render(deltaTime, scene);
         presentSystem.Render(deltaTime, scene);
     }

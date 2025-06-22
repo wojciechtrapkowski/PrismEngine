@@ -13,6 +13,7 @@ set(SYSTEMS_SOURCES
     fps_motion_control_system.cpp
     common_uniform_update_system.cpp
     ui_drawing_system.cpp
+    gizmo_drawing_system.cpp
 )
 
 set(SYSTEMS_HEADERS
@@ -25,6 +26,7 @@ set(SYSTEMS_HEADERS
     public/systems/fps_motion_control_system.hpp
     public/systems/common_uniform_update_system.hpp
     public/systems/ui_drawing_system.hpp
+    public/systems/gizmo_drawing_system.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC
@@ -36,6 +38,7 @@ add_dependencies(
     ${PRISM_SYSTEMS_LIBRARY_NAME}
         glad
         glfw
+        imguizmo
         Prism_Resources
         Prism_Loaders
         Prism_Events
@@ -47,6 +50,7 @@ target_link_libraries(${PRISM_SYSTEMS_LIBRARY_NAME}
     PUBLIC
         glad
         glfw
+        imguizmo
         Prism_Resources
         Prism_Loaders
         Prism_Events

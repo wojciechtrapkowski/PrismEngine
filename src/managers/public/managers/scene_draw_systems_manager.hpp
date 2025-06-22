@@ -1,5 +1,6 @@
 #pragma once
 
+#include "systems/gizmo_drawing_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
 #include "systems/present_system.hpp"
 #include "systems/screen_clearing_system.hpp"
@@ -31,6 +32,7 @@ namespace Prism::Managers {
       private:
         Systems::ScreenClearingSystem screenClearingSystem;
         Systems::MeshDrawingSystem meshDrawingSystem;
+        Systems::GizmoDrawingSystem gizmoDrawingSystem;
         Systems::UIDrawingSystem uiDrawingSystem;
         Systems::PresentSystem presentSystem;
     };
