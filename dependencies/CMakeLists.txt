@@ -4,6 +4,7 @@ add_subdirectory(glfw)
 add_subdirectory(imgui)
 add_subdirectory(glm)
 add_subdirectory(assimp)
+add_subdirectory(ImGuizmo)
 
 # Create GLAD library
 add_library(glad STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/glad.c")
@@ -39,6 +40,7 @@ set(PRISM_DEPENDENCIES
     glfw
     glm
     imgui
+    ImGuizmo
     ${OPENGL_LIBRARIES}
     ${MAC_LIBRARIES}
     PARENT_SCOPE
