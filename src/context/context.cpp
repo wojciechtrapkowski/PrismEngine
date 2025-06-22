@@ -19,6 +19,7 @@
 
 #include "resources/scene.hpp"
 
+#include <format>
 #include <iostream>
 
 namespace Prism::Context {
@@ -27,6 +28,11 @@ namespace Prism::Context {
             const GLubyte *version = glGetString(GL_VERSION);
             std::cout << "OpenGL Version: " << version << std::endl;
         }
+
+        struct FPSCounter {
+            size_t frames = 0;
+            double lastTime = glfwGetTime();
+        };
     } // namespace
 
     void Context::RunEngine() {
@@ -92,12 +98,13 @@ namespace Prism::Context {
 
 #ifdef DEBUG
         printDebugInfo();
+        FPSCounter fpsCounter{};
 #endif
 
         while (!glfwWindowShouldClose(window)) {
-            float currentFrame = glfwGetTime();
-            deltaTime = currentFrame - lastFrameTime;
-            lastFrameTime = currentFrame;
+            float currentTime = glfwGetTime();
+            deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
 
             eventPollSystem.Update(deltaTime);
 
@@ -108,6 +115,18 @@ namespace Prism::Context {
             sceneDrawSystemsManager.Update(deltaTime, scene);
 
             sceneDrawSystemsManager.Render(deltaTime, scene);
+
+
+#ifdef DEBUG
+            // Display FPS counter every second
+            fpsCounter.frames++;
+            if (currentTime - fpsCounter.lastTime >= 1.0) {
+                std::string title = std::format("FPS: {}", fpsCounter.frames);
+                glfwSetWindowTitle(window, title.c_str());
+                fpsCounter.frames = 0;
+                fpsCounter.lastTime = currentTime;
+            }
+#endif
         }
 
 
