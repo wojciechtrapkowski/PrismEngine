@@ -37,7 +37,6 @@ namespace Prism::Systems {
 
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        glDisable(GL_CULL_FACE);
     };
 
     void MeshDrawingSystem::Update(float deltaTime, Resources::Scene &scene) {

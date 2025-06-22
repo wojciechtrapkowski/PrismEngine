@@ -7,12 +7,14 @@ set(UI_SOURCES
     main_dock_ui.cpp
     scene_hierarchy_ui.cpp
     menu_bar_ui.cpp
+    camera_settings_ui.cpp
 )
 
 set(UI_HEADERS
     public/ui/main_dock_ui.hpp
     public/ui/scene_hierarchy_ui.hpp
     public/ui/menu_bar_ui.hpp
+    public/ui/camera_settings_ui.hpp
 )
 
 add_library(${PRISM_UI_LIBRARY_NAME} STATIC
