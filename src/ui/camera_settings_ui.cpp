@@ -16,6 +16,9 @@ namespace Prism::UI {
 
         auto &registry = scene.GetRegistry();
         auto activeCameraView = registry.view<Components::Tags::ActiveCamera>();
+        if (activeCameraView.empty()) {
+            return;
+        }
         auto activeCameraEntity = activeCameraView.front();
 
 

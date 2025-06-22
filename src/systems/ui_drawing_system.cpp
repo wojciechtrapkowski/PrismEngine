@@ -12,7 +12,8 @@ namespace Prism::Systems {
         Resources::ContextResources &contextResources)
         : m_contextResources(contextResources), m_mainDockUI{contextResources},
           m_menuBarUI{contextResources}, m_sceneHierarchyUI{contextResources},
-          m_cameraSettingsUI{contextResources} {};
+          m_cameraSettingsUI{contextResources},
+          m_cameraSelectionUI{contextResources} {};
 
     void UIDrawingSystem::Initialize() {}
 
@@ -29,6 +30,7 @@ namespace Prism::Systems {
         m_menuBarUI.Render(deltaTime, scene);
         m_sceneHierarchyUI.Render(deltaTime, scene);
         m_cameraSettingsUI.Render(deltaTime, scene);
+        m_cameraSelectionUI.Render(deltaTime, scene);
     }
 
     void UIDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {
