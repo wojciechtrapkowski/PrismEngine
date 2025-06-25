@@ -48,9 +48,10 @@ namespace Prism::Loaders {
                     Vertex vert;
                     vert.position = {transformedPos.x, transformedPos.y,
                                      transformedPos.z};
+                    vert.normal = {mesh->mNormals[v].x, mesh->mNormals[v].y,
+                                   mesh->mNormals[v].z};
 
                     vertices.push_back(std::move(vert));
-                    // TODO: parse normals, uvs here when needed
                 }
 
                 for (unsigned int f = 0; f < mesh->mNumFaces; ++f) {

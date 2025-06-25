@@ -21,8 +21,8 @@ namespace Prism::Systems {
         GLCheck(glGenBuffers(1, &commonUbo));
         GLCheck(glBindBuffer(GL_UNIFORM_BUFFER, commonUbo));
 
-        GLCheck(glBufferData(GL_UNIFORM_BUFFER, sizeof(Components::Camera),
-                             nullptr, GL_DYNAMIC_DRAW));
+        GLCheck(glBufferData(GL_UNIFORM_BUFFER, sizeof(ShaderData), nullptr,
+                             GL_DYNAMIC_DRAW));
 
         GLCheck(glBindBufferBase(
             GL_UNIFORM_BUFFER,
@@ -49,16 +49,23 @@ namespace Prism::Systems {
         }
         auto cameraEntity = activeCameraView.front();
 
-        if (!registry.all_of<Components::Camera>(cameraEntity)) {
+        if (!registry.all_of<Components::Camera, Components::Transform>(
+                cameraEntity)) {
             return;
         }
 
         auto &camera = registry.get<Components::Camera>(cameraEntity);
+        auto &transform = registry.get<Components::Transform>(cameraEntity);
+
+        ShaderData shaderData{.view = camera.view,
+                              .projection = camera.projection,
+                              .cameraPosition =
+                                  glm::vec4(transform.transform[3])};
 
         GLCheck(
             glBindBuffer(GL_UNIFORM_BUFFER, m_commonResource.GetUboHandle()));
-        GLCheck(glBufferSubData(GL_UNIFORM_BUFFER, 0,
-                                sizeof(Components::Camera), &camera));
+        GLCheck(glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(ShaderData),
+                                &shaderData));
         GLCheck(glBindBuffer(GL_UNIFORM_BUFFER, 0));
     };
 } // namespace Prism::Systems

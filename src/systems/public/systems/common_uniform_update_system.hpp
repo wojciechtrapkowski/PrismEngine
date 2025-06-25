@@ -13,8 +13,15 @@
 namespace Prism::Systems {
     class CommonUniformUpdateSystem {
       public:
+        struct ShaderData {
+            glm::mat4 view{};
+            glm::mat4 projection{};
+            glm::vec4 cameraPosition{};
+        };
+
         CommonUniformUpdateSystem(
             Resources::ContextResources &contextResources);
+
         ~CommonUniformUpdateSystem() = default;
 
         CommonUniformUpdateSystem(CommonUniformUpdateSystem &other) = delete;

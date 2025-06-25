@@ -14,6 +14,8 @@ namespace Prism::Resources {
     struct MeshResource : ResourceImpl<MeshResource> {
         struct Vertex {
             glm::vec3 position;
+            glm::vec3 normal;
+            glm::vec2 textureUV;
         };
 
         struct Index {

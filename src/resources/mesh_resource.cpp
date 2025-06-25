@@ -26,6 +26,7 @@ namespace Prism::Resources {
                      meshDescriptor.indices.data(), GL_STATIC_DRAW);
 
         // Vertex layout
+        glEnableVertexAttribArray(0);
         glVertexAttribPointer(
             0,        // Attribute location in shader (layout(location = 0))
             3,        // 3 components (x, y, z)
@@ -37,8 +38,17 @@ namespace Prism::Resources {
                 position) // Offset of 'position' in struct (should be 0)
         );
 
-        // Unbind them
-        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(
+            1,        // Attribute location in shader (layout(location = 0))
+            3,        // 3 components (x, y, z)
+            GL_FLOAT, // Type
+            GL_FALSE, // Not normalized
+            sizeof(Vertex), // Stride (distance between vertices)
+            (void *)offsetof(
+                Vertex,
+                normal) // Offset of 'position' in struct (should be 0)
+        );
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -46,7 +56,7 @@ namespace Prism::Resources {
     }
 
     MeshResource::~MeshResource() {
-        if (m_vertexBuffer != 0) {
+        if (m_vertexArrayObject != 0) {
             glDeleteVertexArrays(1, &m_vertexArrayObject);
         }
 
