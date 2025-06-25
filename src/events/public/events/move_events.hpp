@@ -6,7 +6,7 @@ namespace Prism::Events {
     namespace MoveEvents {
         enum class InputAction { None, Pressed };
 
-        enum class Keys { W, A, S, D, SPACE, SHIFT };
+        enum class Keys { W, A, S, D, SPACE, SHIFT, R, T };
 
         enum class MouseButton { Left, Right };
     }; // namespace MoveEvents

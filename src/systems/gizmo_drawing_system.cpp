@@ -25,7 +25,12 @@ namespace Prism::Systems {
 
     GizmoDrawingSystem::GizmoDrawingSystem(
         Resources::ContextResources &contextResources)
-        : m_contextResources(contextResources) {};
+        : m_contextResources(contextResources) {
+
+        m_onKeyPressedConnection =
+            m_contextResources.dispatcher.sink<Events::KeyPressEvent>()
+                .connect<&GizmoDrawingSystem::onKeyPressed>(this);
+    };
 
     void GizmoDrawingSystem::Initialize() {
 
@@ -64,6 +69,14 @@ namespace Prism::Systems {
         GLCheck(glfwGetFramebufferSize(m_contextResources.window.get(), &width,
                                        &height));
 
+        ImGuizmo::OPERATION imGuizmoOperation = ImGuizmo::OPERATION::SCALE;
+        if (m_keyToStateMap[Events::Keys::R] == Events::InputAction::Pressed) {
+            imGuizmoOperation = ImGuizmo::OPERATION::ROTATE;
+        } else if (m_keyToStateMap[Events::Keys::T] ==
+                   Events::InputAction::Pressed) {
+            imGuizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
+        }
+
         ImGui::SetWindowPos(ImVec2(0, 0));
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));
 
@@ -85,13 +98,19 @@ namespace Prism::Systems {
             glm::value_ptr(translation), glm::value_ptr(rotation),
             glm::value_ptr(scale));
 
-        ImGuizmo::Manipulate(
-            glm::value_ptr(camera.view), glm::value_ptr(camera.projection),
-            ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::WORLD,
-            glm::value_ptr(selectedNodeTransform.transform));
+        ImGuizmo::Manipulate(glm::value_ptr(camera.view),
+                             glm::value_ptr(camera.projection),
+                             imGuizmoOperation, ImGuizmo::MODE::WORLD,
+                             glm::value_ptr(selectedNodeTransform.transform));
 
         ImGui::End();
+
+        m_keyToStateMap.clear();
     };
 
     void GizmoDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {}
+
+    void GizmoDrawingSystem::onKeyPressed(const Events::KeyPressEvent &event) {
+        m_keyToStateMap[event.key] = event.action;
+    }
 } // namespace Prism::Systems

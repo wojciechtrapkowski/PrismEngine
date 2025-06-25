@@ -40,6 +40,18 @@ namespace Prism::Systems {
                     .action = Events::MoveEvents::InputAction::Pressed,
                     .key = Events::MoveEvents::Keys::D});
             }
+
+            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+                dispatcher.enqueue<Events::KeyPressEvent>(Events::KeyPressEvent{
+                    .action = Events::MoveEvents::InputAction::Pressed,
+                    .key = Events::MoveEvents::Keys::R});
+            }
+
+            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
+                dispatcher.enqueue<Events::KeyPressEvent>(Events::KeyPressEvent{
+                    .action = Events::MoveEvents::InputAction::Pressed,
+                    .key = Events::MoveEvents::Keys::T});
+            }
         }
 
         void handleMouseMovement(entt::dispatcher &dispatcher,
