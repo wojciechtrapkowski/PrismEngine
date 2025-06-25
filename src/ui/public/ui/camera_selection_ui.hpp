@@ -15,7 +15,7 @@ namespace Prism::UI {
         CameraSelectionUI(CameraSelectionUI &&) = delete;
         CameraSelectionUI &operator=(CameraSelectionUI &&) = delete;
 
-        void Render(float deltaTime, Resources::Scene &scene);
+        void Update(float deltaTime, Resources::Scene &scene);
 
       private:
         Resources::ContextResources &m_contextResources;

@@ -15,7 +15,7 @@ namespace Prism::UI {
         MainDockUI(MainDockUI &&) = delete;
         MainDockUI &operator=(MainDockUI &&) = delete;
 
-        void Render(float deltaTime, Resources::Scene &scene);
+        void Update(float deltaTime, Resources::Scene &scene);
 
       private:
         Resources::ContextResources &m_contextResources;

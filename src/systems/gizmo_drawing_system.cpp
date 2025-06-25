@@ -1,7 +1,7 @@
 #include "systems/gizmo_drawing_system.hpp"
 
+#include "components/camera.hpp"
 #include "components/fps_camera_control.hpp"
-#include "components/fps_motion_control.hpp"
 #include "components/mesh.hpp"
 #include "components/tags.hpp"
 #include "components/transform.hpp"
@@ -33,10 +33,6 @@ namespace Prism::Systems {
 
     void GizmoDrawingSystem::Update(float deltaTime, Resources::Scene &scene) {
 
-    };
-
-    void GizmoDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {
-
         auto &registry = scene.GetRegistry();
 
         auto activeCameraView = registry.view<Components::Tags::ActiveCamera>();
@@ -45,10 +41,10 @@ namespace Prism::Systems {
         }
         auto cameraEntity = activeCameraView.front();
 
-        if (!registry.all_of<Components::FpsCameraControl,
-                             Components::FpsMotionControl>(cameraEntity)) {
+        if (!registry.all_of<Components::Camera>(cameraEntity)) {
             return;
         }
+
         auto selectedNodeView = registry.view<Components::Tags::SelectedNode>();
         if (selectedNodeView.empty()) {
             return;
@@ -59,33 +55,14 @@ namespace Prism::Systems {
             return;
         }
 
-        auto &cameraSettings =
-            registry.get<Components::FpsCameraControl>(cameraEntity);
-        auto &cameraControl =
-            registry.get<Components::FpsMotionControl>(cameraEntity);
+        auto &camera = registry.get<Components::Camera>(cameraEntity);
 
-        auto &cameraPosition = cameraControl.cameraPosition;
-        auto &cameraForward = cameraControl.cameraForward;
-        auto &cameraRight = cameraControl.cameraRight;
-        auto &cameraUp = cameraControl.cameraUp;
-
-        glm::mat4 view = glm::lookAt(cameraPosition,
-                                     cameraPosition + cameraForward, cameraUp);
+        auto &selectedNodeTransform =
+            registry.get<Components::Transform>(selectedNodeEntity);
 
         int width, height;
         GLCheck(glfwGetFramebufferSize(m_contextResources.window.get(), &width,
                                        &height));
-        glViewport(0, 0, width, height);
-
-        float aspectRatio =
-            static_cast<float>(width) / static_cast<float>(height);
-
-        glm::mat4 projection =
-            glm::perspective(glm::radians(cameraSettings.fov), aspectRatio,
-                             cameraSettings.nearPlane, cameraSettings.farPlane);
-
-        auto &selectedNodeTransform =
-            registry.get<Components::Transform>(selectedNodeEntity);
 
         ImGui::SetWindowPos(ImVec2(0, 0));
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));
@@ -108,11 +85,13 @@ namespace Prism::Systems {
             glm::value_ptr(translation), glm::value_ptr(rotation),
             glm::value_ptr(scale));
 
-        ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(projection),
-                             ImGuizmo::OPERATION::TRANSLATE,
-                             ImGuizmo::MODE::WORLD,
-                             glm::value_ptr(selectedNodeTransform.transform));
+        ImGuizmo::Manipulate(
+            glm::value_ptr(camera.view), glm::value_ptr(camera.projection),
+            ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::WORLD,
+            glm::value_ptr(selectedNodeTransform.transform));
 
         ImGui::End();
-    }
+    };
+
+    void GizmoDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {}
 } // namespace Prism::Systems

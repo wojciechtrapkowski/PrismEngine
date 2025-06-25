@@ -11,7 +11,7 @@ namespace Prism::UI {
         Resources::ContextResources &contextResources)
         : m_contextResources(contextResources) {};
 
-    void CameraSettingsUI::Render(float deltaTime, Resources::Scene &scene) {
+    void CameraSettingsUI::Update(float deltaTime, Resources::Scene &scene) {
         ImGui::Begin("Camera settings");
 
         auto &registry = scene.GetRegistry();

@@ -1,7 +1,7 @@
 #include "systems/camera_creation_system.hpp"
 
+#include "components/camera.hpp"
 #include "components/fps_camera_control.hpp"
-#include "components/fps_motion_control.hpp"
 #include "components/tags.hpp"
 #include "components/transform.hpp"
 
@@ -11,7 +11,7 @@ namespace Prism::Systems {
     namespace {
         void createFpsCamera(entt::registry &registry,
                              entt::entity cameraEntity) {
-            registry.emplace<Components::FpsMotionControl>(cameraEntity);
+            registry.emplace<Components::FpsCameraControl>(cameraEntity);
         }
     } // namespace
 
@@ -36,7 +36,8 @@ namespace Prism::Systems {
 
         auto cameraEntity = registry.create();
         registry.emplace<Components::Tags::ActiveCamera>(cameraEntity);
-        registry.emplace<Components::FpsCameraControl>(cameraEntity);
+        registry.emplace<Components::Camera>(cameraEntity);
+        registry.emplace<Components::Transform>(cameraEntity);
 
         createFpsCamera(registry, cameraEntity);
     };

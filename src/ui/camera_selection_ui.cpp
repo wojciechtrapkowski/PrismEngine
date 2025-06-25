@@ -21,7 +21,7 @@ namespace Prism::UI {
         Resources::ContextResources &contextResources)
         : m_contextResources(contextResources) {}
 
-    void CameraSelectionUI::Render(float deltaTime, Resources::Scene &scene) {
+    void CameraSelectionUI::Update(float deltaTime, Resources::Scene &scene) {
         ImGui::Begin("Camera selection");
 
         auto &registry = scene.GetRegistry();

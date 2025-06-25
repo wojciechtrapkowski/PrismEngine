@@ -15,7 +15,7 @@ namespace Prism::UI {
         MenuBarUI(MenuBarUI &&) = delete;
         MenuBarUI &operator=(MenuBarUI &&) = delete;
 
-        void Render(float deltaTime, Resources::Scene &scene);
+        void Update(float deltaTime, Resources::Scene &scene);
 
       private:
         Resources::ContextResources &m_contextResources;

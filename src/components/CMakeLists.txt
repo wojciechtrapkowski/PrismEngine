@@ -7,7 +7,7 @@ set(COMPONENTS_HEADERS
     public/components/mesh.hpp
     public/components/tags.hpp
     public/components/transform.hpp
-    public/components/fps_motion_control.hpp
+    public/components/camera.hpp
     public/components/fps_camera_control.hpp
 )
 

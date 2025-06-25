@@ -91,7 +91,7 @@ namespace Prism::UI {
         Resources::ContextResources &contextResources)
         : m_contextResources(contextResources) {};
 
-    void SceneHierarchyUI::Render(float deltaTime, Resources::Scene &scene) {
+    void SceneHierarchyUI::Update(float deltaTime, Resources::Scene &scene) {
         ImGui::Begin("Scene Hierarchy");
 
         auto &registry = scene.GetRegistry();

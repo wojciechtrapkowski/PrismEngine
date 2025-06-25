@@ -10,11 +10,6 @@
 
 namespace Prism::Resources {
     struct CommonResource : ResourceImpl<CommonResource> {
-        struct alignas(16) ShaderData {
-            glm::mat4 projection;
-            glm::mat4 view;
-        };
-
         CommonResource() = default;
         CommonResource(GLuint uboHandle);
         ~CommonResource();

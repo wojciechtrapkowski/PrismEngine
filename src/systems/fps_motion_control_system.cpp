@@ -1,11 +1,13 @@
 #include "systems/fps_motion_control_system.hpp"
 
+#include "components/camera.hpp"
 #include "components/fps_camera_control.hpp"
-#include "components/fps_motion_control.hpp"
 #include "components/tags.hpp"
 #include "components/transform.hpp"
 
 #include "events/move_events.hpp"
+
+#include "utils/opengl_debug.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -53,23 +55,28 @@ namespace Prism::Systems {
             return;
         }
 
-        if (!registry.all_of<Components::FpsMotionControl,
-                             Components::FpsCameraControl>(
-                activeCameraView.front())) {
+        if (!registry.all_of<Components::Camera, Components::FpsCameraControl,
+                             Components::Transform>(activeCameraView.front())) {
             return;
         }
 
         auto fpsCamera = activeCameraView.front();
 
-        auto &fpsMotionControl =
-            registry.get<Components::FpsMotionControl>(fpsCamera);
+        auto &camera = registry.get<Components::Camera>(fpsCamera);
         auto &cameraControl =
             registry.get<Components::FpsCameraControl>(fpsCamera);
+        auto &transform = registry.get<Components::Transform>(fpsCamera);
 
-        auto &cameraPosition = fpsMotionControl.cameraPosition;
-        auto &cameraForward = fpsMotionControl.cameraForward;
-        auto &cameraRight = fpsMotionControl.cameraRight;
-        auto &cameraUp = fpsMotionControl.cameraUp;
+        auto cameraPosition = glm::vec3(transform.transform[3]);
+        auto cameraRotation = glm::mat4(glm::mat3(transform.transform));
+
+        float pitch, yaw, roll;
+
+        glm::extractEulerAngleYXZ(cameraRotation, yaw, pitch, roll);
+
+        pitch = glm::degrees(pitch);
+        yaw = glm::degrees(yaw);
+        roll = glm::degrees(roll);
 
         if (m_mouseButtonToStateMap[Events::MoveEvents::MouseButton::Left] ==
             Events::MoveEvents::InputAction::Pressed) {
@@ -78,30 +85,20 @@ namespace Prism::Systems {
             float deltaY =
                 m_mousePositionDelta.second * cameraControl.mouseSensitivity;
 
-            fpsMotionControl.yaw += deltaX;
-            fpsMotionControl.pitch += deltaY;
+            yaw -= deltaX;
+            pitch += deltaY;
 
-            if (fpsMotionControl.pitch > PITCH_LIMIT) {
-                fpsMotionControl.pitch = PITCH_LIMIT;
-            }
-
-            if (fpsMotionControl.pitch < -PITCH_LIMIT) {
-                fpsMotionControl.pitch = -PITCH_LIMIT;
-            }
+            pitch = glm::clamp(pitch, -PITCH_LIMIT, PITCH_LIMIT);
         }
 
-        float yaw = glm::radians(fpsMotionControl.yaw);
-        float pitch = glm::radians(fpsMotionControl.pitch);
+        yaw = glm::radians(yaw);
+        pitch = glm::radians(pitch);
 
-        cameraForward.x = cos(yaw) * cos(pitch);
-        cameraForward.y = sin(pitch);
-        cameraForward.z = cos(pitch) * sin(yaw);
-        cameraForward = glm::normalize(cameraForward);
+        cameraRotation = glm::eulerAngleYXZ(yaw, pitch, 0.0f);
 
-        cameraRight =
-            glm::normalize(glm::cross(cameraForward, WORLD_UP_VECTOR));
-
-        cameraUp = glm::normalize(glm::cross(cameraRight, cameraForward));
+        auto cameraRight = glm::vec3(cameraRotation[0]);
+        auto cameraUp = glm::vec3(cameraRotation[1]);
+        auto cameraForward = -glm::vec3(cameraRotation[2]);
 
         if (m_keyToStateMap[Events::MoveEvents::Keys::W] ==
             Events::MoveEvents::InputAction::Pressed) {
@@ -129,6 +126,29 @@ namespace Prism::Systems {
             Events::MoveEvents::InputAction::Pressed) {
             cameraPosition -= cameraUp * cameraControl.moveSpeed * deltaTime;
         }
+
+        glm::mat4 rotationMat = cameraRotation;
+        glm::mat4 translationMat =
+            glm::translate(glm::mat4(1.0f), cameraPosition);
+        transform.transform = translationMat * rotationMat;
+
+        glm::mat4 view = glm::lookAt(cameraPosition,
+                                     cameraPosition + cameraForward, cameraUp);
+
+        int width, height;
+        GLCheck(glfwGetFramebufferSize(m_contextResources.window.get(), &width,
+                                       &height));
+        glViewport(0, 0, width, height);
+
+        float aspectRatio =
+            static_cast<float>(width) / static_cast<float>(height);
+
+        glm::mat4 projection =
+            glm::perspective(glm::radians(cameraControl.fov), aspectRatio,
+                             cameraControl.nearPlane, cameraControl.farPlane);
+
+        camera.view = std::move(view);
+        camera.projection = std::move(projection);
 
         m_mousePositionDelta = {0.f, 0.f};
         m_keyToStateMap.clear();

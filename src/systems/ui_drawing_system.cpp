@@ -26,11 +26,11 @@ namespace Prism::Systems {
             m_contextResources.dispatcher.clear<Events::MouseMoveEvent>();
         }
 
-        m_mainDockUI.Render(deltaTime, scene);
-        m_menuBarUI.Render(deltaTime, scene);
-        m_sceneHierarchyUI.Render(deltaTime, scene);
-        m_cameraSettingsUI.Render(deltaTime, scene);
-        m_cameraSelectionUI.Render(deltaTime, scene);
+        m_mainDockUI.Update(deltaTime, scene);
+        m_menuBarUI.Update(deltaTime, scene);
+        m_sceneHierarchyUI.Update(deltaTime, scene);
+        m_cameraSettingsUI.Update(deltaTime, scene);
+        m_cameraSelectionUI.Update(deltaTime, scene);
     }
 
     void UIDrawingSystem::Render(float deltaTime, Resources::Scene &scene) {

@@ -7,7 +7,7 @@ namespace Prism::UI {
     MainDockUI::MainDockUI(Resources::ContextResources &contextResources)
         : m_contextResources(contextResources) {};
 
-    void MainDockUI::Render(float deltaTime, Resources::Scene &scene) {
+    void MainDockUI::Update(float deltaTime, Resources::Scene &scene) {
         bool dockspaceOpen = true;
 
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar |
