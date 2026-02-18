@@ -15,14 +15,17 @@
 #include <stdexcept>
 #include <utility>
 
-namespace Prism::Loaders {
-    namespace {
-        std::vector<const char *> getRequiredInstanceExtensions() {
-            uint32_t glfwExtensionCount = 0;
-            const char **glfwExtensions;
+namespace Prism::Loaders
+{
+    namespace
+    {
+        std::vector<const char*> getRequiredInstanceExtensions()
+        {
+            uint32_t     glfwExtensionCount = 0;
+            const char** glfwExtensions;
             glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-            std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+            std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 #ifdef DEBUG
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -38,8 +41,9 @@ namespace Prism::Loaders {
             return extensions;
         };
 
-        std::vector<const char *> getRequiredDeviceExtensions() {
-            std::vector<const char *> deviceExtensions;
+        std::vector<const char*> getRequiredDeviceExtensions()
+        {
+            std::vector<const char*> deviceExtensions;
             deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 #ifdef PLATFORM_MAC
             deviceExtensions.push_back("VK_KHR_portability_subset");
@@ -48,8 +52,9 @@ namespace Prism::Loaders {
             return deviceExtensions;
         }
 
-        std::vector<const char *> getValidationLayers() {
-            std::vector<const char *> validationLayers;
+        std::vector<const char*> getValidationLayers()
+        {
+            std::vector<const char*> validationLayers;
 #ifdef DEBUG
             validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
@@ -57,55 +62,81 @@ namespace Prism::Loaders {
             return validationLayers;
         }
 
-        bool checkPhysicalDeviceExtensionsSupport(VkPhysicalDevice device) {
+        bool checkPhysicalDeviceExtensionsSupport(VkPhysicalDevice device)
+        {
             uint32_t extensionCount;
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
             std::vector<VkExtensionProperties> availableExtensions(extensionCount);
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-            auto deviceExtensions = getRequiredDeviceExtensions();
+            auto                  deviceExtensions = getRequiredDeviceExtensions();
             std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
-            for (const auto &extension : availableExtensions) {
+            for (const auto& extension : availableExtensions) {
                 requiredExtensions.erase(extension.extensionName);
             }
 
             return requiredExtensions.empty();
         }
 
-        VkInstance createInstance() {
+        Resources::VulkanDeviceAdditionalExtensions getAdditionalDeviceExtensions(VkPhysicalDevice device)
+        {
+            Resources::VulkanDeviceAdditionalExtensions additionalExtensions = {};
+
+            uint32_t extensionCount;
+            vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+            std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+            vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+            std::set<std::string> additionalRTExtensions = {
+                VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME};
+
+            for (const auto& extension : availableExtensions) {
+                additionalRTExtensions.erase(extension.extensionName);
+            }
+
+            if (additionalRTExtensions.empty()) {
+                additionalExtensions |= Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE;
+            }
+
+            return additionalExtensions;
+        }
+
+        VkInstance createInstance()
+        {
             VkResult result;
 
             VkApplicationInfo appInfo{};
-            appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            appInfo.pApplicationName = "Prism UI";
+            appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            appInfo.pApplicationName   = "Prism UI";
             appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-            appInfo.pEngineName = "Prism";
-            appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-            appInfo.apiVersion = VK_API_VERSION_1_3;
+            appInfo.pEngineName        = "Prism";
+            appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+            appInfo.apiVersion         = VK_API_VERSION_1_3;
 
             VkInstanceCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             createInfo.pApplicationInfo = &appInfo;
 
             auto extensions = getRequiredInstanceExtensions();
 
-            createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
             createInfo.ppEnabledExtensionNames = extensions.data();
-            createInfo.flags = 0;
+            createInfo.flags                   = 0;
 
 #ifdef PLATFORM_MAC
             createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
 
-            auto validationLayers = getValidationLayers();
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            auto validationLayers          = getValidationLayers();
+            createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
 
 #ifdef DEBUG
             VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = Utils::Vulkan::DebugMessenger::getCreateInfo();
-            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
+            createInfo.pNext                                   = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
 #endif
 
             VkInstance instance;
@@ -117,7 +148,8 @@ namespace Prism::Loaders {
             return instance;
         }
 
-        VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow *window) {
+        VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
+        {
             VkSurfaceKHR surface;
 
             if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
@@ -127,7 +159,9 @@ namespace Prism::Loaders {
             return surface;
         }
 
-        VkPhysicalDevice pickPhysicalDevice(VkInstance instance) {
+        // For now pick discrete GPU.
+        VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
+        {
             uint32_t deviceCount = 0;
             vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
@@ -138,54 +172,80 @@ namespace Prism::Loaders {
             std::vector<VkPhysicalDevice> devices(deviceCount);
             vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+            for (const auto& device : devices) {
+                VkPhysicalDeviceProperties deviceProperties{};
+                vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-            for (const auto &device : devices) {
-                if (checkPhysicalDeviceExtensionsSupport(device)) {
+                if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && checkPhysicalDeviceExtensionsSupport(device)) {
                     return device;
                 }
             }
 
-            throw std::runtime_error("Couldn't find a suitable GPU!");
+            throw std::runtime_error("Couldn't find a suitable discrete GPU!");
         };
 
-        VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, Utils::Vulkan::Common::QueueFamilyIndices indices) {
+        std::pair<VkDevice, Resources::VulkanDeviceAdditionalExtensions>
+        createLogicalDevice(VkPhysicalDevice physicalDevice, Utils::Vulkan::Common::QueueFamilyIndices indices)
+        {
             VkDevice device;
 
             std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-            std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+            std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
             float queuePriority = 1.0f;
             for (uint32_t queueFamily : uniqueQueueFamilies) {
                 VkDeviceQueueCreateInfo queueCreateInfo{};
-                queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                 queueCreateInfo.queueFamilyIndex = queueFamily;
-                queueCreateInfo.queueCount = 1;
+                queueCreateInfo.queueCount       = 1;
                 queueCreateInfo.pQueuePriorities = &queuePriority;
 
                 queueCreateInfos.push_back(queueCreateInfo);
             }
 
+            auto additionalDeviceExtensions = getAdditionalDeviceExtensions(physicalDevice);
+
             VkPhysicalDeviceFeatures deviceFeatures{};
 
             VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
-            dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+            dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
             dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+            accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+
+            VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures{};
+            rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
 
             VkDeviceCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
             createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-            createInfo.pQueueCreateInfos = queueCreateInfos.data();
+            createInfo.pQueueCreateInfos    = queueCreateInfos.data();
 
             createInfo.pEnabledFeatures = &deviceFeatures;
 
-            std::vector<const char *> deviceExtensions = getRequiredDeviceExtensions();
-            createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+            std::vector<const char*> deviceExtensions = getRequiredDeviceExtensions();
+
+            dynamicRenderingFeatures.pNext = nullptr;
+            if (additionalDeviceExtensions & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE) {
+                deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+                deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+                deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+
+                accelerationStructureFeatures.accelerationStructure = VK_TRUE;
+                rayTracingPipelineFeatures.rayTracingPipeline       = VK_TRUE;
+
+                rayTracingPipelineFeatures.pNext = &accelerationStructureFeatures;
+                dynamicRenderingFeatures.pNext   = &rayTracingPipelineFeatures;
+            }
+
+            createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
             createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
             auto validationLayers = getValidationLayers();
 
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
 
             createInfo.pNext = &dynamicRenderingFeatures;
@@ -194,11 +254,11 @@ namespace Prism::Loaders {
                 throw std::runtime_error("Failed to create logical device!");
             }
 
-            return device;
+            return std::make_pair(device, additionalDeviceExtensions);
         }
 
-        std::pair<VkQueue, VkQueue> getQueues(VkDevice device, Utils::Vulkan::Common::QueueFamilyIndices indices) {
-
+        std::pair<VkQueue, VkQueue> getQueues(VkDevice device, Utils::Vulkan::Common::QueueFamilyIndices indices)
+        {
             VkQueue graphicsQueue;
             vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 
@@ -209,7 +269,8 @@ namespace Prism::Loaders {
         }
     }; // namespace
 
-    VulkanLoader::result_type VulkanLoader::operator()(Resources::WindowResource &windowResource) {
+    VulkanLoader::result_type VulkanLoader::operator()(Resources::WindowResource& windowResource)
+    {
         try {
             auto instance = createInstance();
 #ifdef DEBUG
@@ -224,28 +285,37 @@ namespace Prism::Loaders {
 
             Utils::Vulkan::Common::QueueFamilyIndices indices = Utils::Vulkan::Common::findQueueFamilies(surface, physicalDevice);
 
-            auto device = createLogicalDevice(physicalDevice, indices);
+            auto [device, additionalDeviceExtensions] = createLogicalDevice(physicalDevice, indices);
 
             auto [graphicsQueue, presentationQueue] = getQueues(device, indices);
 
             auto [windowWidth, windowHeight] = windowResource.GetWindowExtent();
-            VkExtent2D windowExtent = {.width = static_cast<uint32_t>(windowWidth), .height = static_cast<uint32_t>(windowHeight)};
+            VkExtent2D windowExtent          = {.width = static_cast<uint32_t>(windowWidth), .height = static_cast<uint32_t>(windowHeight)};
 
             std::cout << "Vulkan loaded successfully!" << std::endl;
 
             VmaAllocator allocator;
 
             VmaAllocatorCreateInfo allocatorInfo = {};
-            allocatorInfo.physicalDevice = physicalDevice;
-            allocatorInfo.device = device;
-            allocatorInfo.instance = instance;
+            allocatorInfo.physicalDevice         = physicalDevice;
+            allocatorInfo.device                 = device;
+            allocatorInfo.instance               = instance;
 
             vmaCreateAllocator(&allocatorInfo, &allocator);
 
-            return Resources::VulkanResource(instance, std::move(debugMessenger), surface, physicalDevice, device, allocator, graphicsQueue, presentationQueue,
-                                             windowExtent);
-
-        } catch (const std::exception &e) {
+            return Resources::VulkanResource(
+                instance,
+                std::move(debugMessenger),
+                surface,
+                physicalDevice,
+                device,
+                additionalDeviceExtensions,
+                allocator,
+                graphicsQueue,
+                presentationQueue,
+                windowExtent);
+        }
+        catch (const std::exception& e) {
             std::cerr << "Couldn't load Vulkan - " << e.what() << std::endl;
 
             return std::nullopt;

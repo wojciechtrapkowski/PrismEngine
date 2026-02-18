@@ -8,15 +8,35 @@
 #include <set>
 #include <utility>
 
-namespace Prism::Resources {
-    namespace {
-        struct SwapchainSupportDetails {
-            VkSurfaceCapabilitiesKHR capabilities;
+namespace Prism::Resources
+{
+    VulkanDeviceAdditionalExtensions operator|(VulkanDeviceAdditionalExtensions a, VulkanDeviceAdditionalExtensions b)
+    {
+        return static_cast<VulkanDeviceAdditionalExtensions>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    VulkanDeviceAdditionalExtensions operator|=(VulkanDeviceAdditionalExtensions& a, VulkanDeviceAdditionalExtensions b)
+    {
+        a = a | b;
+        return a;
+    }
+
+    uint32_t operator&(VulkanDeviceAdditionalExtensions a, VulkanDeviceAdditionalExtensions b)
+    {
+        return (static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+    }
+
+    namespace
+    {
+        struct SwapchainSupportDetails
+        {
+            VkSurfaceCapabilitiesKHR        capabilities;
             std::vector<VkSurfaceFormatKHR> formats;
-            std::vector<VkPresentModeKHR> presentModes;
+            std::vector<VkPresentModeKHR>   presentModes;
         };
 
-        SwapchainSupportDetails querySwapChainSupport(VkSurfaceKHR surface, VkPhysicalDevice device) {
+        SwapchainSupportDetails querySwapChainSupport(VkSurfaceKHR surface, VkPhysicalDevice device)
+        {
             SwapchainSupportDetails details;
 
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -40,7 +60,8 @@ namespace Prism::Resources {
             return details;
         }
 
-        std::vector<VkFence> createFences(VkDevice device) {
+        std::vector<VkFence> createFences(VkDevice device)
+        {
             std::vector<VkFence> fences;
 
             for (size_t i = 0; i < Resources::VulkanResource::FRAMES_IN_FLIGHT; i++) {
@@ -58,7 +79,8 @@ namespace Prism::Resources {
             return fences;
         }
 
-        std::vector<VkSemaphore> createSemaphores(VkDevice device) {
+        std::vector<VkSemaphore> createSemaphores(VkDevice device)
+        {
             std::vector<VkSemaphore> semaphores;
             semaphores.reserve(Resources::VulkanResource::FRAMES_IN_FLIGHT);
 
@@ -85,17 +107,27 @@ namespace Prism::Resources {
 
     } // namespace
 
-    VulkanResource::VulkanResource(VkInstance instance, std::unique_ptr<Utils::Vulkan::DebugMessenger> debugMessenger, VkSurfaceKHR surface,
-                                   VkPhysicalDevice physicalDevice, VkDevice device, VmaAllocator allocator, VkQueue graphicsQueue, VkQueue presentationQueue,
-                                   VkExtent2D swapchainExtent)
-        : instance(instance), debugMessenger(std::move(debugMessenger)), surface(surface), physicalDevice(physicalDevice), device(device),
-          vmaAllocator(allocator), graphicsQueue(graphicsQueue), presentationQueue(presentationQueue), fences(createFences(device)),
-          imageAcquiredSemaphores(createSemaphores(device)) {
-
+    VulkanResource::VulkanResource(
+        VkInstance                                     instance,
+        std::unique_ptr<Utils::Vulkan::DebugMessenger> debugMessenger,
+        VkSurfaceKHR                                   surface,
+        VkPhysicalDevice                               physicalDevice,
+        VkDevice                                       device,
+        VulkanDeviceAdditionalExtensions               additionalExtensions,
+        VmaAllocator                                   allocator,
+        VkQueue                                        graphicsQueue,
+        VkQueue                                        presentationQueue,
+        VkExtent2D                                     swapchainExtent) :
+        instance(instance),
+        debugMessenger(std::move(debugMessenger)), surface(surface), physicalDevice(physicalDevice), device(device), additionalExtensions(additionalExtensions),
+        vmaAllocator(allocator), graphicsQueue(graphicsQueue), presentationQueue(presentationQueue), fences(createFences(device)),
+        imageAcquiredSemaphores(createSemaphores(device))
+    {
         RecreateSwapchain(swapchainExtent.width, swapchainExtent.height);
     }
 
-    VulkanResource::~VulkanResource() {
+    VulkanResource::~VulkanResource()
+    {
         // This is global, we don't need to wait on device idle.
 
         // Explicit deletion.
@@ -124,16 +156,21 @@ namespace Prism::Resources {
         }
     }
 
-    VulkanResource::VulkanResource(VulkanResource &&other) noexcept { swap(*this, other); }
+    VulkanResource::VulkanResource(VulkanResource&& other) noexcept
+    {
+        swap(*this, other);
+    }
 
-    VulkanResource &VulkanResource::operator=(VulkanResource &&other) noexcept {
+    VulkanResource& VulkanResource::operator=(VulkanResource&& other) noexcept
+    {
         if (this != &other) {
             swap(*this, other);
         }
         return *this;
     }
 
-    void swap(VulkanResource &first, VulkanResource &second) noexcept {
+    void swap(VulkanResource& first, VulkanResource& second) noexcept
+    {
         using std::swap;
 
         swap(first.instance, second.instance);
@@ -163,7 +200,8 @@ namespace Prism::Resources {
         swap(first.debugMessenger, second.debugMessenger);
     }
 
-    void VulkanResource::RecreateSwapchain(int newWidth, int newHeight) {
+    void VulkanResource::RecreateSwapchain(int newWidth, int newHeight)
+    {
         // Wait until everything is finished to avoid synchronisation issues.
         vkDeviceWaitIdle(device);
 
@@ -173,7 +211,8 @@ namespace Prism::Resources {
         createSwapchainImagesViews();
     }
 
-    void VulkanResource::AdvanceFrame() {
+    void VulkanResource::AdvanceFrame()
+    {
         vkWaitForFences(device, 1, &fences[currentFrameOffset], true, UINT64_MAX);
         vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAcquiredSemaphores[currentFrameOffset], VK_NULL_HANDLE, &currentImageIndex);
         vkResetFences(device, 1, &fences[currentFrameOffset]);
@@ -181,7 +220,8 @@ namespace Prism::Resources {
         currentFrameOffset = (currentFrameOffset + 1) % FRAMES_IN_FLIGHT;
     }
 
-    void VulkanResource::cleanupSwapchain() {
+    void VulkanResource::cleanupSwapchain()
+    {
         swapchainBoundResourceStorage.Clear();
 
         for (auto imageView : swapchainImagesViews) {
@@ -197,58 +237,60 @@ namespace Prism::Resources {
         }
     }
 
-    void VulkanResource::createSwapchain(int newWidth, int newHeight) {
+    void VulkanResource::createSwapchain(int newWidth, int newHeight)
+    {
         auto swapchainSupport = querySwapChainSupport(surface, physicalDevice);
 
-        auto checkFormatSupport = [this](const VkSurfaceFormatKHR &availableFormat) {
+        auto checkFormatSupport = [this](const VkSurfaceFormatKHR& availableFormat) {
             return availableFormat.format == USED_SURFACE_FORMAT.format && availableFormat.colorSpace == USED_SURFACE_FORMAT.colorSpace;
         };
         if (std::find_if(swapchainSupport.formats.begin(), swapchainSupport.formats.end(), checkFormatSupport) == swapchainSupport.formats.end()) {
             throw std::runtime_error("Format & color space are not supported on this device!");
         }
 
-        auto checkPresentSupport = [this](const VkPresentModeKHR &availablePresentMode) { return availablePresentMode == PRESENT_MODE; };
+        auto checkPresentSupport = [this](const VkPresentModeKHR& availablePresentMode) { return availablePresentMode == PRESENT_MODE; };
         if (std::find_if(swapchainSupport.presentModes.begin(), swapchainSupport.presentModes.end(), checkPresentSupport) ==
-            swapchainSupport.presentModes.end()) {
+            swapchainSupport.presentModes.end())
+        {
             throw std::runtime_error("Present mode is not supported on this device!");
         }
 
         VkExtent2D extent = {static_cast<uint32_t>(newWidth), static_cast<uint32_t>(newHeight)};
 
-        extent.width = std::clamp(extent.width, swapchainSupport.capabilities.minImageExtent.width, swapchainSupport.capabilities.maxImageExtent.width);
+        extent.width  = std::clamp(extent.width, swapchainSupport.capabilities.minImageExtent.width, swapchainSupport.capabilities.maxImageExtent.width);
         extent.height = std::clamp(extent.height, swapchainSupport.capabilities.minImageExtent.height, swapchainSupport.capabilities.maxImageExtent.height);
 
         // We want 2 swapchain images.
         imageCount = std::max(2u, swapchainSupport.capabilities.minImageCount);
 
         VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.sType   = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.surface = surface;
 
-        createInfo.minImageCount = imageCount;
-        createInfo.imageFormat = USED_SURFACE_FORMAT.format;
-        createInfo.imageColorSpace = USED_SURFACE_FORMAT.colorSpace;
-        createInfo.imageExtent = extent;
+        createInfo.minImageCount    = imageCount;
+        createInfo.imageFormat      = USED_SURFACE_FORMAT.format;
+        createInfo.imageColorSpace  = USED_SURFACE_FORMAT.colorSpace;
+        createInfo.imageExtent      = extent;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
         Utils::Vulkan::Common::QueueFamilyIndices indices = Utils::Vulkan::Common::findQueueFamilies(surface, physicalDevice);
 
-        graphicsQueueFamilyIndex = indices.graphicsFamily.value();
+        graphicsQueueFamilyIndex     = indices.graphicsFamily.value();
         presentationQueueFamilyIndex = indices.presentFamily.value();
 
         std::set<uint32_t> queueFamilySet = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
         std::vector<uint32_t> queueFamilyIndices(queueFamilySet.begin(), queueFamilySet.end());
 
-        createInfo.imageSharingMode = queueFamilyIndices.size() > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
+        createInfo.imageSharingMode      = queueFamilyIndices.size() > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilyIndices.size());
-        createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+        createInfo.pQueueFamilyIndices   = queueFamilyIndices.data();
 
-        createInfo.preTransform = swapchainSupport.capabilities.currentTransform;
+        createInfo.preTransform   = swapchainSupport.capabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        createInfo.presentMode = PRESENT_MODE;
-        createInfo.clipped = VK_TRUE;
+        createInfo.presentMode    = PRESENT_MODE;
+        createInfo.clipped        = VK_TRUE;
 
         if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) != VK_SUCCESS) {
             throw std::runtime_error("failed to create swap chain!");
@@ -257,7 +299,8 @@ namespace Prism::Resources {
         swapchainExtent = {static_cast<uint32_t>(newWidth), static_cast<uint32_t>(newHeight)};
     }
 
-    void VulkanResource::createSwapchainImages() {
+    void VulkanResource::createSwapchainImages()
+    {
         uint32_t imageCount;
         vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
 
@@ -266,24 +309,25 @@ namespace Prism::Resources {
         vkGetSwapchainImagesKHR(device, swapchain, &imageCount, swapchainImages.data());
     }
 
-    void VulkanResource::createSwapchainImagesViews() {
+    void VulkanResource::createSwapchainImagesViews()
+    {
         swapchainImagesViews.resize(swapchainImages.size());
 
         for (size_t i = 0; i < swapchainImagesViews.size(); i++) {
             VkImageViewCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            createInfo.image = swapchainImages[i];
-            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            createInfo.format = USED_SURFACE_FORMAT.format;
-            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            createInfo.subresourceRange.baseMipLevel = 0;
-            createInfo.subresourceRange.levelCount = 1;
+            createInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image                           = swapchainImages[i];
+            createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format                          = USED_SURFACE_FORMAT.format;
+            createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            createInfo.subresourceRange.baseMipLevel   = 0;
+            createInfo.subresourceRange.levelCount     = 1;
             createInfo.subresourceRange.baseArrayLayer = 0;
-            createInfo.subresourceRange.layerCount = 1;
+            createInfo.subresourceRange.layerCount     = 1;
 
             if (vkCreateImageView(device, &createInfo, nullptr, &swapchainImagesViews[i]) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to create image views!");
