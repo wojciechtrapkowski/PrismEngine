@@ -15,6 +15,7 @@ set(RESOURCES_SOURCES
     vulkan/vk_command_pool_resource.cpp
     vulkan/vk_framebuffer_resource.cpp
     vulkan/vk_staging_buffer_resource.cpp
+    vulkan/vk_acceleration_structure_resource.cpp
 )
 
 set(RESOURCES_HEADERS
@@ -33,6 +34,7 @@ set(RESOURCES_HEADERS
     public/resources/vulkan/vk_framebuffer_resource.hpp
     public/resources/vulkan/vk_buffer_resource.hpp
     public/resources/vulkan/vk_staging_buffer_resource.hpp
+    public/resources/vulkan/vk_acceleration_structure_resource.hpp
 )
 
 add_library(${PRISM_RESOURCES_LIBRARY_NAME} STATIC

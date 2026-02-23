@@ -207,9 +207,14 @@ namespace Prism::Loaders
 
             VkPhysicalDeviceFeatures deviceFeatures{};
 
+            VkPhysicalDeviceVulkan12Features vulkan12Features{};
+            vulkan12Features.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            vulkan12Features.bufferDeviceAddress = VK_TRUE;
+
             VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
             dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
             dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+            dynamicRenderingFeatures.pNext            = &vulkan12Features;
 
             VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
             accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
@@ -227,7 +232,6 @@ namespace Prism::Loaders
 
             std::vector<const char*> deviceExtensions = getRequiredDeviceExtensions();
 
-            dynamicRenderingFeatures.pNext = nullptr;
             if (additionalDeviceExtensions & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE) {
                 deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
                 deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
@@ -236,8 +240,9 @@ namespace Prism::Loaders
                 accelerationStructureFeatures.accelerationStructure = VK_TRUE;
                 rayTracingPipelineFeatures.rayTracingPipeline       = VK_TRUE;
 
-                rayTracingPipelineFeatures.pNext = &accelerationStructureFeatures;
-                dynamicRenderingFeatures.pNext   = &rayTracingPipelineFeatures;
+                accelerationStructureFeatures.pNext = &vulkan12Features;
+                rayTracingPipelineFeatures.pNext    = &accelerationStructureFeatures;
+                dynamicRenderingFeatures.pNext      = &rayTracingPipelineFeatures;
             }
 
             createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
@@ -297,6 +302,7 @@ namespace Prism::Loaders
             VmaAllocator allocator;
 
             VmaAllocatorCreateInfo allocatorInfo = {};
+            allocatorInfo.flags                  = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
             allocatorInfo.physicalDevice         = physicalDevice;
             allocatorInfo.device                 = device;
             allocatorInfo.instance               = instance;

@@ -109,7 +109,7 @@ namespace Prism::Managers
 
             _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
-            _raytracingDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
+            _raytracingDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, stagingBuffer);
             _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);

@@ -7,6 +7,7 @@
 
 #include "resources/common_resource.hpp"
 #include "resources/vulkan/vk_buffer_resource.hpp"
+#include "resources/vulkan/vk_acceleration_structure_resource.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -16,10 +17,18 @@
 #include <iostream>
 #include <vector>
 
+#include "vulkan/vulkan.h"
+
 namespace Prism::Systems
 {
     namespace
     {
+        constexpr auto MIN_ACCELERATION_STRUCTURE_SCRATCH_OFFSET_ALIGNMENT = 128;
+
+        constexpr auto getMeshBLASId = [](Resources::MeshResource::ID id) {
+            return std::hash<std::string_view>{}(std::format("RaytracingDrawingSystem/BLAS/{}", id));
+        };
+
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {
             VkDescriptorPool descriptorPool;
@@ -269,6 +278,185 @@ namespace Prism::Systems
 
             vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
         };
+
+        Resources::VkAccelerationStructureResource
+        createAccelerationStructureFromMesh(Resources::VulkanResource& vulkan, VkCommandBuffer commandBuffer, Resources::MeshResource& mesh)
+        {
+            auto pfnGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(
+                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureBuildSizesKHR"));
+            auto pfnCreateAccelerationStructureKHR =
+                reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCreateAccelerationStructureKHR"));
+            auto pfnCmdBuildAccelerationStructuresKHR =
+                reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCmdBuildAccelerationStructuresKHR"));
+
+            VkAccelerationStructureKHR accelStruct{};
+
+            // Prepare geometry
+
+            const auto triangleCount = static_cast<uint32_t>(mesh.GetIndexBuffer().GetElementCount() / 3U);
+
+            auto& vertexBuffer = mesh.GetVertexBuffer();
+            auto& indexBuffer  = mesh.GetIndexBuffer();
+
+            VkAccelerationStructureGeometryTrianglesDataKHR accelTriangles{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
+                .vertexFormat = mesh.GetVertexType(),
+                .vertexData   = {.deviceAddress = vertexBuffer.GetBufferDeviceAddress()},
+                .vertexStride = vertexBuffer.GetElementSize(),
+                .maxVertex    = static_cast<uint32_t>(vertexBuffer.GetElementCount()),
+                .indexType    = mesh.GetIndexType(),
+                .indexData    = {.deviceAddress = indexBuffer.GetBufferDeviceAddress()},
+            };
+
+            VkAccelerationStructureGeometryKHR accelGeometry = VkAccelerationStructureGeometryKHR{
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+                .geometry     = {.triangles = accelTriangles},
+                .flags        = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR | VK_GEOMETRY_OPAQUE_BIT_KHR,
+            };
+
+            VkAccelerationStructureBuildRangeInfoKHR accelRangeInfo{.primitiveCount = triangleCount};
+
+            VkAccelerationStructureBuildGeometryInfoKHR accelBuildInfo{
+                .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+                .flags         = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .geometryCount = 1,
+                .pGeometries   = &accelGeometry,
+            };
+
+            std::vector<uint32_t> maxPrimCount(1);
+            maxPrimCount[0] = accelRangeInfo.primitiveCount;
+
+            // Create buffers for acceleration structure and scratch space
+            VkAccelerationStructureBuildSizesInfoKHR accelBuildSize{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+            pfnGetAccelerationStructureBuildSizesKHR(
+                vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &accelBuildSize);
+
+            Resources::VkBufferResource<> accelerationStructureBuffer{
+                vulkan.GetVmaAllocator(),
+                accelBuildSize.accelerationStructureSize,
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+
+            Resources::VkBufferResource<> scratchBuffer{
+                vulkan.GetVmaAllocator(),
+                accelBuildSize.buildScratchSize,
+                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                MIN_ACCELERATION_STRUCTURE_SCRATCH_OFFSET_ALIGNMENT};
+
+            VkAccelerationStructureCreateInfoKHR accelCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+                .size  = accelBuildSize.accelerationStructureSize,
+                .type  = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+            };
+
+            accelCreateInfo.buffer = accelerationStructureBuffer.GetBuffer();
+
+            // Create and build acceleration structure
+
+            if (pfnCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create acceleration structure!");
+            }
+
+            accelBuildInfo.dstAccelerationStructure  = accelStruct;
+            accelBuildInfo.scratchData.deviceAddress = scratchBuffer.GetBufferDeviceAddress();
+
+            VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelRangeInfo;
+
+            pfnCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
+
+            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
+        }
+
+        // VkTransformMatrixKHR is row-major 3x4, glm::mat4 is column-major; transpose before memcpy
+        auto toTransformMatrixKHR = [](const glm::mat4& m) {
+            VkTransformMatrixKHR t;
+            memcpy(&t, glm::value_ptr(glm::transpose(m)), sizeof(t));
+            return t;
+        };
+
+        Resources::VkAccelerationStructureResource createTLAS(
+            Resources::VulkanResource&                       vulkan,
+            VkCommandBuffer                                  commandBuffer,
+            Resources::VkBufferResource<>&                   tlasInstancesBuffer,
+            std::vector<VkAccelerationStructureInstanceKHR>& instances)
+        {
+            auto pfnGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(
+                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureBuildSizesKHR"));
+            auto pfnCreateAccelerationStructureKHR =
+                reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCreateAccelerationStructureKHR"));
+            auto pfnCmdBuildAccelerationStructuresKHR =
+                reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCmdBuildAccelerationStructuresKHR"));
+
+            VkAccelerationStructureGeometryInstancesDataKHR geometryInstances{
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+                .data  = {.deviceAddress = tlasInstancesBuffer.GetBufferDeviceAddress()}};
+
+            VkAccelerationStructureGeometryKHR accelGeometry = {
+                .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+                .geometry     = {.instances = geometryInstances}};
+
+            VkAccelerationStructureBuildRangeInfoKHR accelBuildRangeInfo = {.primitiveCount = static_cast<uint32_t>(instances.size())};
+
+            constexpr auto MIN_ACCELERATION_STRUCTURE_SCRATCH_OFFSET_ALIGNMENT = 128;
+
+            VkAccelerationStructureKHR accelStruct{};
+
+            // Prepare geometry
+
+            VkAccelerationStructureBuildGeometryInfoKHR accelBuildInfo{
+                .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .type          = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+                .flags         = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .geometryCount = 1,
+                .pGeometries   = &accelGeometry,
+            };
+
+            std::vector<uint32_t> maxPrimCount(1);
+            maxPrimCount[0] = accelBuildRangeInfo.primitiveCount;
+
+            // Create buffers for acceleration structure and scratch space
+            VkAccelerationStructureBuildSizesInfoKHR accelBuildSize{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+            pfnGetAccelerationStructureBuildSizesKHR(
+                vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &accelBuildSize);
+
+            Resources::VkBufferResource<> accelerationStructureBuffer{
+                vulkan.GetVmaAllocator(),
+                accelBuildSize.accelerationStructureSize,
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+
+            Resources::VkBufferResource<> scratchBuffer{
+                vulkan.GetVmaAllocator(),
+                accelBuildSize.buildScratchSize,
+                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                MIN_ACCELERATION_STRUCTURE_SCRATCH_OFFSET_ALIGNMENT};
+
+            VkAccelerationStructureCreateInfoKHR accelCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+                .size  = accelBuildSize.accelerationStructureSize,
+                .type  = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+            };
+
+            accelCreateInfo.buffer = accelerationStructureBuffer.GetBuffer();
+
+            // Create and build acceleration structure
+
+            if (pfnCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create acceleration structure!");
+            }
+
+            accelBuildInfo.dstAccelerationStructure  = accelStruct;
+            accelBuildInfo.scratchData.deviceAddress = scratchBuffer.GetBufferDeviceAddress();
+
+            VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelBuildRangeInfo;
+
+            pfnCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
+
+            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
+        }
     } // namespace
 
     RaytracingDrawingSystem::RaytracingDrawingSystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
@@ -310,12 +498,114 @@ namespace Prism::Systems
 
     };
 
-    void RaytracingDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
+    void
+    RaytracingDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        auto& resourceStorage = _contextResources.GetResourceStorage();
+
+        auto meshView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
+
+        std::vector<Resources::MeshResource::ID> meshWithoutBLAS;
+        meshWithoutBLAS.reserve(meshView.size_hint());
+
+        bool updateOfInstanceDataBufferIsNeeded = false;
+
+        for (auto& meshEntity : meshView) {
+            auto& meshComponent      = meshView.get<Components::Mesh>(meshEntity);
+            auto& transformComponent = meshView.get<Components::Transform>(meshEntity);
+            auto& meshResourceId     = meshComponent.resourceId;
+            auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
+
+            auto meshOpt = scene.GetMesh(meshResourceId);
+            if (!meshOpt) {
+                continue;
+            }
+            auto& mesh = meshOpt.value();
+
+            auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
+            if (!accelStructureResourceOpt) {
+                auto accel = createAccelerationStructureFromMesh(_contextResources.GetVulkanResource(), commandBuffer, mesh);
+
+                resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
+                    blasMeshResourceId, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(accel)));
+            }
+
+            if (_blasToInstanceData.find(blasMeshResourceId) == _blasToInstanceData.end()) {
+                _blasToInstanceData[blasMeshResourceId].push_back(transformComponent);
+                updateOfInstanceDataBufferIsNeeded |= true;
+            }
+        }
+
+        if (updateOfInstanceDataBufferIsNeeded) {
+            std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
+
+            // Optimization.
+            size_t tlasInstancesVectorSize = 0;
+            for (const auto& [_, instances] : _blasToInstanceData) {
+                tlasInstancesVectorSize += instances.size();
+            }
+            tlasInstances.reserve(tlasInstancesVectorSize);
+
+            for (const auto& [blasMeshResourceId, instances] : _blasToInstanceData) {
+                auto blasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
+                if (!blasOpt) {
+                    continue;
+                }
+                auto& blas          = blasOpt->get();
+                auto  instanceIndex = 0;
+                for (const auto& instance : instances) {
+                    VkAccelerationStructureInstanceKHR asInstance{};
+                    asInstance.transform                              = toTransformMatrixKHR(instance.transform);
+                    asInstance.instanceCustomIndex                    = instanceIndex;
+                    asInstance.accelerationStructureReference         = blas.GetAccelerationStructureBuffer().GetBufferDeviceAddress();
+                    asInstance.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
+                    asInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV; // No culling - double sided
+                    asInstance.mask                                   = 0xFF;
+                    tlasInstances.emplace_back(asInstance);
+
+                    instanceIndex++;
+                }
+            }
+
+            resourceStorage.Delete(TLAS_INSTANCES_BUFFER_ID);
+
+            auto& vmaAllocator = _contextResources.GetVulkanResource().GetVmaAllocator();
+
+            Resources::VkBufferResource<> tlasInstancesBuffer{
+                vmaAllocator,
+                sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size(),
+                VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT |
+                    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU};
+
+            stagingBuffer.Copy(tlasInstancesBuffer.GetBuffer(), tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
+
+            auto tlasAccelStruct = createTLAS(_contextResources.GetVulkanResource(), commandBuffer, tlasInstancesBuffer, tlasInstances);
+
+            resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
+                TLAS_ACCEL_STRUCT_BUFFER_ID, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(tlasAccelStruct)));
+
+            resourceStorage.Insert<Resources::VkBufferResource<>>(
+                TLAS_INSTANCES_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(tlasInstancesBuffer)));
+        }
+
+        for (auto& entity : meshView) {
+            auto& meshComponent      = meshView.get<Components::Mesh>(entity);
+            auto& meshResourceId     = meshComponent.resourceId;
+            auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
+
+            auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
+            // It must have value now.
+            auto& accelStructResource = accelStructureResourceOpt->get();
+
+            accelStructResource.DestroyScratchBuffer();
+        }
+
         vkEndCommandBuffer(commandBuffer);
     };
 
