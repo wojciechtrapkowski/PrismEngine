@@ -240,7 +240,12 @@ namespace Prism::Loaders
                 accelerationStructureFeatures.accelerationStructure = VK_TRUE;
                 rayTracingPipelineFeatures.rayTracingPipeline       = VK_TRUE;
 
-                accelerationStructureFeatures.pNext = &vulkan12Features;
+                VkPhysicalDeviceSynchronization2Features synchronization2Features{};
+                synchronization2Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+                synchronization2Features.synchronization2 = VK_TRUE;
+                synchronization2Features.pNext            = &vulkan12Features;
+
+                accelerationStructureFeatures.pNext = &synchronization2Features;
                 rayTracingPipelineFeatures.pNext    = &accelerationStructureFeatures;
                 dynamicRenderingFeatures.pNext      = &rayTracingPipelineFeatures;
             }

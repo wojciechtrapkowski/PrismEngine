@@ -7,6 +7,7 @@
 #include "vulkan/vulkan.h"
 
 #include "resources/resource_storage.hpp"
+#include "resources/render_target_resource.hpp"
 
 #include "vk_mem_alloc.h"
 
@@ -104,7 +105,7 @@ namespace Prism::Resources
         static constexpr auto FRAMES_IN_FLIGHT = 2;
 
     private:
-        VkSurfaceFormatKHR USED_SURFACE_FORMAT = {.format = VK_FORMAT_B8G8R8A8_SRGB, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+        VkSurfaceFormatKHR USED_SURFACE_FORMAT = {.format = Resources::RenderTargetResource::GetColorFormat(), .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
         VkPresentModeKHR   PRESENT_MODE        = VK_PRESENT_MODE_FIFO_KHR;
 
         VkInstance       instance          = VK_NULL_HANDLE;
@@ -115,7 +116,7 @@ namespace Prism::Resources
         VkQueue          graphicsQueue     = VK_NULL_HANDLE;
         VkQueue          presentationQueue = VK_NULL_HANDLE;
 
-        VkFormat       swapchainImageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+        VkFormat       swapchainImageFormat = Resources::RenderTargetResource::GetColorFormat();
         VkFormat       swapchainDepthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
         VkExtent2D     swapchainExtent      = {0, 0};
         VkSwapchainKHR swapchain            = VK_NULL_HANDLE;

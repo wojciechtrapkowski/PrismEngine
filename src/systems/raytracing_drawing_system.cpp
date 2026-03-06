@@ -16,8 +16,21 @@
 #include <filesystem>
 #include <iostream>
 #include <vector>
+#include <cstring>
 
 #include "vulkan/vulkan.h"
+
+#ifndef RAY_RGEN_SHADER_PATH
+#error "RAY_RGEN_SHADER_PATH is not defined!"
+#endif
+
+#ifndef RAY_RMISS_SHADER_PATH
+#error "RAY_RMISS_SHADER_PATH is not defined!"
+#endif
+
+#ifndef RAY_RCHIT_SHADER_PATH
+#error "RAY_RCHIT_SHADER_PATH is not defined!"
+#endif
 
 namespace Prism::Systems
 {
@@ -33,9 +46,13 @@ namespace Prism::Systems
         {
             VkDescriptorPool descriptorPool;
 
-            std::array<VkDescriptorPoolSize, 1> poolSizes{};
+            std::array<VkDescriptorPoolSize, 3> poolSizes{};
             poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             poolSizes[0].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
+            poolSizes[1].type            = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            poolSizes[1].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
+            poolSizes[2].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            poolSizes[2].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
 
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -54,14 +71,31 @@ namespace Prism::Systems
         {
             VkDescriptorSetLayout descriptorSetLayout;
 
+            // Binding 0: common uniform buffer (view, projection, camera position)
             VkDescriptorSetLayoutBinding uboBinding{};
             uboBinding.binding            = 0;
             uboBinding.descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             uboBinding.descriptorCount    = 1;
-            uboBinding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            uboBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
             uboBinding.pImmutableSamplers = nullptr;
 
-            std::array<VkDescriptorSetLayoutBinding, 1> bindings = {uboBinding};
+            // Binding 1: top-level acceleration structure
+            VkDescriptorSetLayoutBinding tlasBinding{};
+            tlasBinding.binding            = 1;
+            tlasBinding.descriptorType     = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            tlasBinding.descriptorCount    = 1;
+            tlasBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            tlasBinding.pImmutableSamplers = nullptr;
+
+            // Binding 2: storage image for ray tracing output
+            VkDescriptorSetLayoutBinding outputImageBinding{};
+            outputImageBinding.binding            = 2;
+            outputImageBinding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            outputImageBinding.descriptorCount    = 1;
+            outputImageBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            outputImageBinding.pImmutableSamplers = nullptr;
+
+            std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboBinding, tlasBinding, outputImageBinding};
 
             VkDescriptorSetLayoutCreateInfo layoutInfo{};
             layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -100,17 +134,12 @@ namespace Prism::Systems
         {
             VkPipelineLayout pipelineLayout;
 
-            VkPushConstantRange pushRange{};
-            pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            pushRange.offset     = 0;
-            pushRange.size       = sizeof(glm::mat4);
-
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             pipelineLayoutInfo.setLayoutCount         = 1;
             pipelineLayoutInfo.pSetLayouts            = &descriptorSetLayout;
-            pipelineLayoutInfo.pushConstantRangeCount = 1;
-            pipelineLayoutInfo.pPushConstantRanges    = &pushRange;
+            pipelineLayoutInfo.pushConstantRangeCount = 0;
+            pipelineLayoutInfo.pPushConstantRanges    = nullptr;
 
             if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to create pipeline layout!");
@@ -119,164 +148,119 @@ namespace Prism::Systems
             return pipelineLayout;
         }
 
-        VkPipeline createPipeline(VkDevice device, VkPipelineLayout pipelineLayout)
+        VkPipeline createPipeline(VkDevice device, VkPhysicalDevice physicalDevice, VkPipelineLayout pipelineLayout)
         {
+            auto pfnCreateRayTracingPipelinesKHR =
+                reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+
             // Load shader modules
-            VkShaderModule vertexShaderModule   = Utils::Vulkan::Common::loadShaderModule(device, BASIC_VERT_SHADER_PATH);
-            VkShaderModule fragmentShaderModule = Utils::Vulkan::Common::loadShaderModule(device, BASIC_FRAG_SHADER_PATH);
+            VkShaderModule rgenModule  = Utils::Vulkan::Common::loadShaderModule(device, RAY_RGEN_SHADER_PATH);
+            VkShaderModule rmissModule = Utils::Vulkan::Common::loadShaderModule(device, RAY_RMISS_SHADER_PATH);
+            VkShaderModule rchitModule = Utils::Vulkan::Common::loadShaderModule(device, RAY_RCHIT_SHADER_PATH);
 
-            // Shader stages
-            VkPipelineShaderStageCreateInfo shaderStages[2]{};
+            // Shader stages: 0 = raygen, 1 = miss, 2 = closest-hit
+            std::array<VkPipelineShaderStageCreateInfo, 3> stages{};
+            stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_RAYGEN_BIT_KHR, rgenModule, "main"};
+            stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_MISS_BIT_KHR, rmissModule, "main"};
+            stages[2] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, rchitModule, "main"};
 
-            shaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
-            shaderStages[0].module = vertexShaderModule;
-            shaderStages[0].pName  = "main";
+            // Shader groups: raygen (general), miss (general), triangle hit group (closest-hit)
+            std::array<VkRayTracingShaderGroupCreateInfoKHR, 3> groups{};
 
-            shaderStages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shaderStages[1].module = fragmentShaderModule;
-            shaderStages[1].pName  = "main";
+            groups[0].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[0].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+            groups[0].generalShader      = 0; // raygen
+            groups[0].closestHitShader   = VK_SHADER_UNUSED_KHR;
+            groups[0].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[0].intersectionShader = VK_SHADER_UNUSED_KHR;
 
-            // Vertex input state
-            VkPipelineVertexInputStateCreateInfo vertexInputState{};
-            vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            groups[1].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[1].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+            groups[1].generalShader      = 1; // miss
+            groups[1].closestHitShader   = VK_SHADER_UNUSED_KHR;
+            groups[1].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[1].intersectionShader = VK_SHADER_UNUSED_KHR;
 
-            VkVertexInputBindingDescription binding{};
-            binding.binding   = 0;
-            binding.stride    = sizeof(Resources::MeshResource::Vertex);
-            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            groups[2].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[2].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+            groups[2].generalShader      = VK_SHADER_UNUSED_KHR;
+            groups[2].closestHitShader   = 2; // closest-hit
+            groups[2].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[2].intersectionShader = VK_SHADER_UNUSED_KHR;
 
-            VkVertexInputAttributeDescription attributes[3]{};
-            attributes[0].binding  = 0;
-            attributes[0].location = 0;
-            attributes[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
-            attributes[0].offset   = offsetof(Resources::MeshResource::Vertex, position);
+            VkRayTracingPipelineCreateInfoKHR pipelineCreateInfo{};
+            pipelineCreateInfo.sType                        = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+            pipelineCreateInfo.stageCount                   = static_cast<uint32_t>(stages.size());
+            pipelineCreateInfo.pStages                      = stages.data();
+            pipelineCreateInfo.groupCount                   = static_cast<uint32_t>(groups.size());
+            pipelineCreateInfo.pGroups                      = groups.data();
+            pipelineCreateInfo.maxPipelineRayRecursionDepth = 1;
+            pipelineCreateInfo.layout                       = pipelineLayout;
 
-            attributes[1].binding  = 0;
-            attributes[1].location = 1;
-            attributes[1].format   = VK_FORMAT_R32G32B32_SFLOAT;
-            attributes[1].offset   = offsetof(Resources::MeshResource::Vertex, normal);
-
-            attributes[2].binding  = 0;
-            attributes[2].location = 2;
-            attributes[2].format   = VK_FORMAT_R32G32_SFLOAT;
-            attributes[2].offset   = offsetof(Resources::MeshResource::Vertex, textureUV);
-
-            vertexInputState.vertexBindingDescriptionCount   = 1;
-            vertexInputState.pVertexBindingDescriptions      = &binding;
-            vertexInputState.vertexAttributeDescriptionCount = 3;
-            vertexInputState.pVertexAttributeDescriptions    = attributes;
-
-            // Input assembly
-            VkPipelineInputAssemblyStateCreateInfo inputAssemblyState{};
-            inputAssemblyState.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-            // Viewport and scissor state
-            VkPipelineViewportStateCreateInfo viewportState{};
-            viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewportState.viewportCount = 1;
-            viewportState.scissorCount  = 1;
-
-            // Rasterizer
-            VkPipelineRasterizationStateCreateInfo rasterizationState{};
-            rasterizationState.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizationState.cullMode    = VK_CULL_MODE_NONE;
-            rasterizationState.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizationState.lineWidth   = 1.0f;
-
-            // Multisampling
-            VkPipelineMultisampleStateCreateInfo multisampleState{};
-            multisampleState.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-            // Depth and stencil state
-            VkPipelineDepthStencilStateCreateInfo depthStencilState{};
-            depthStencilState.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-            depthStencilState.depthTestEnable  = VK_TRUE;
-            depthStencilState.depthWriteEnable = VK_TRUE;
-            depthStencilState.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-            // Color blend attachment
-            VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-            colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            colorBlendAttachment.blendEnable    = VK_FALSE;
-
-            // Color blend state
-            VkPipelineColorBlendStateCreateInfo colorBlendState{};
-            colorBlendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            colorBlendState.attachmentCount = 1;
-            colorBlendState.pAttachments    = &colorBlendAttachment;
-
-            // Dynamic states
-            VkDynamicState                   dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-            VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
-            dynamicStateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(std::size(dynamicStates));
-            dynamicStateInfo.pDynamicStates    = dynamicStates;
-
-            // Dynamic rendering info (no render pass)
-            VkFormat colorFormat = VK_FORMAT_B8G8R8A8_SRGB;
-
-            VkPipelineRenderingCreateInfo renderingInfo{};
-            renderingInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-            renderingInfo.colorAttachmentCount    = 1;
-            renderingInfo.pColorAttachmentFormats = &colorFormat;
-            renderingInfo.depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT_S8_UINT;
-            renderingInfo.stencilAttachmentFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
-
-            // Graphics pipeline create info
-            VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
-            pipelineCreateInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-            pipelineCreateInfo.pNext               = &renderingInfo;
-            pipelineCreateInfo.stageCount          = 2;
-            pipelineCreateInfo.pStages             = shaderStages;
-            pipelineCreateInfo.pVertexInputState   = &vertexInputState;
-            pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-            pipelineCreateInfo.pViewportState      = &viewportState;
-            pipelineCreateInfo.pRasterizationState = &rasterizationState;
-            pipelineCreateInfo.pMultisampleState   = &multisampleState;
-            pipelineCreateInfo.pDepthStencilState  = &depthStencilState;
-            pipelineCreateInfo.pColorBlendState    = &colorBlendState;
-            pipelineCreateInfo.pDynamicState       = &dynamicStateInfo;
-            pipelineCreateInfo.layout              = pipelineLayout;
-            pipelineCreateInfo.renderPass          = VK_NULL_HANDLE; // dynamic rendering
-            pipelineCreateInfo.basePipelineHandle  = VK_NULL_HANDLE;
-
-            // Create graphics pipeline
             VkPipeline pipeline{};
-            if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
-                vkDestroyShaderModule(device, vertexShaderModule, nullptr);
-                vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
-                throw std::runtime_error("vkCreateGraphicsPipelines failed");
+            if (pfnCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
+                vkDestroyShaderModule(device, rgenModule, nullptr);
+                vkDestroyShaderModule(device, rmissModule, nullptr);
+                vkDestroyShaderModule(device, rchitModule, nullptr);
+                throw std::runtime_error("vkCreateRayTracingPipelinesKHR failed");
             }
 
-            // Cleanup shader modules
-            vkDestroyShaderModule(device, vertexShaderModule, nullptr);
-            vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
+            vkDestroyShaderModule(device, rgenModule, nullptr);
+            vkDestroyShaderModule(device, rmissModule, nullptr);
+            vkDestroyShaderModule(device, rchitModule, nullptr);
 
             return pipeline;
         }
 
-        void updateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkBuffer commonUniformBuffer)
+        void updateDescriptorSet(
+            VkDevice device, VkDescriptorSet descriptorSet, VkBuffer commonUniformBuffer, VkAccelerationStructureKHR tlas, VkImageView outputImageView)
         {
+            // Binding 0: common UBO
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = commonUniformBuffer;
             bufferInfo.offset = 0;
             bufferInfo.range  = VK_WHOLE_SIZE;
 
-            VkWriteDescriptorSet descriptorWrite{};
-            descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet          = descriptorSet;
-            descriptorWrite.dstBinding      = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo     = &bufferInfo;
+            VkWriteDescriptorSet uboWrite{};
+            uboWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            uboWrite.dstSet          = descriptorSet;
+            uboWrite.dstBinding      = 0;
+            uboWrite.dstArrayElement = 0;
+            uboWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uboWrite.descriptorCount = 1;
+            uboWrite.pBufferInfo     = &bufferInfo;
 
-            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+            // Binding 1: TLAS
+            VkWriteDescriptorSetAccelerationStructureKHR tlasWriteAS{};
+            tlasWriteAS.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            tlasWriteAS.accelerationStructureCount = 1;
+            tlasWriteAS.pAccelerationStructures    = &tlas;
+
+            VkWriteDescriptorSet tlasWrite{};
+            tlasWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            tlasWrite.pNext           = &tlasWriteAS;
+            tlasWrite.dstSet          = descriptorSet;
+            tlasWrite.dstBinding      = 1;
+            tlasWrite.dstArrayElement = 0;
+            tlasWrite.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            tlasWrite.descriptorCount = 1;
+
+            // Binding 2: storage image (output)
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageView   = outputImageView;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+            VkWriteDescriptorSet imageWrite{};
+            imageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            imageWrite.dstSet          = descriptorSet;
+            imageWrite.dstBinding      = 2;
+            imageWrite.dstArrayElement = 0;
+            imageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            imageWrite.descriptorCount = 1;
+            imageWrite.pImageInfo      = &imageInfo;
+
+            std::array<VkWriteDescriptorSet, 3> writes = {uboWrite, tlasWrite, imageWrite};
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
         };
 
         Resources::VkAccelerationStructureResource
@@ -461,14 +445,15 @@ namespace Prism::Systems
 
     RaytracingDrawingSystem::RaytracingDrawingSystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
-        auto&    vulkanResource = _contextResources.GetVulkanResource();
-        VkDevice device         = vulkanResource.GetDevice();
+        auto&            vulkanResource = _contextResources.GetVulkanResource();
+        VkDevice         device         = vulkanResource.GetDevice();
+        VkPhysicalDevice physicalDevice = vulkanResource.GetPhysicalDevice();
 
         _descriptorPool      = createDescriptorPool(device);
         _descriptorSetLayout = createDescriptorSetLayout(device);
         _descriptorSets      = createDescriptorSets(device, _descriptorPool, _descriptorSetLayout);
         _pipelineLayout      = createPipelineLayout(device, _descriptorSetLayout);
-        _pipeline            = createPipeline(device, _pipelineLayout);
+        _pipeline            = createPipeline(device, physicalDevice, _pipelineLayout);
     };
 
     RaytracingDrawingSystem::~RaytracingDrawingSystem()
@@ -507,6 +492,8 @@ namespace Prism::Systems
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
         auto& resourceStorage = _contextResources.GetResourceStorage();
+        auto& vmaAllocator    = _contextResources.GetVulkanResource().GetVmaAllocator();
+        auto& vulkan          = _contextResources.GetVulkanResource();
 
         auto meshView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
 
@@ -515,9 +502,7 @@ namespace Prism::Systems
 
         bool updateOfInstanceDataBufferIsNeeded = false;
 
-        for (auto& meshEntity : meshView) {
-            auto& meshComponent      = meshView.get<Components::Mesh>(meshEntity);
-            auto& transformComponent = meshView.get<Components::Transform>(meshEntity);
+        for (auto [meshEntity, meshComponent, transformComponent] : meshView.each()) {
             auto& meshResourceId     = meshComponent.resourceId;
             auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
 
@@ -551,20 +536,28 @@ namespace Prism::Systems
             }
             tlasInstances.reserve(tlasInstancesVectorSize);
 
+            auto pfnGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(
+                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureDeviceAddressKHR"));
+
             for (const auto& [blasMeshResourceId, instances] : _blasToInstanceData) {
                 auto blasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!blasOpt) {
                     continue;
                 }
-                auto& blas          = blasOpt->get();
-                auto  instanceIndex = 0;
+                auto&                                       blas = blasOpt->get();
+                VkAccelerationStructureDeviceAddressInfoKHR addressInfo{};
+                addressInfo.sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+                addressInfo.accelerationStructure = blas.GetAccelerationStructure();
+
+                auto instanceIndex = 0;
+
                 for (const auto& instance : instances) {
                     VkAccelerationStructureInstanceKHR asInstance{};
                     asInstance.transform                              = toTransformMatrixKHR(instance.transform);
                     asInstance.instanceCustomIndex                    = instanceIndex;
-                    asInstance.accelerationStructureReference         = blas.GetAccelerationStructureBuffer().GetBufferDeviceAddress();
+                    asInstance.accelerationStructureReference         = pfnGetAccelerationStructureDeviceAddressKHR(vulkan.GetDevice(), &addressInfo);
                     asInstance.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
-                    asInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV; // No culling - double sided
+                    asInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // No culling - double sided
                     asInstance.mask                                   = 0xFF;
                     tlasInstances.emplace_back(asInstance);
 
@@ -574,8 +567,6 @@ namespace Prism::Systems
 
             resourceStorage.Delete(TLAS_INSTANCES_BUFFER_ID);
 
-            auto& vmaAllocator = _contextResources.GetVulkanResource().GetVmaAllocator();
-
             Resources::VkBufferResource<> tlasInstancesBuffer{
                 vmaAllocator,
                 sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size(),
@@ -583,27 +574,82 @@ namespace Prism::Systems
                     VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU};
 
-            stagingBuffer.Copy(tlasInstancesBuffer.GetBuffer(), tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
+            void* data;
+            vmaMapMemory(vmaAllocator, tlasInstancesBuffer.GetAllocation(), &data);
+            memcpy(data, tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
+            vmaUnmapMemory(vmaAllocator, tlasInstancesBuffer.GetAllocation());
+            vmaFlushAllocation(vmaAllocator, tlasInstancesBuffer.GetAllocation(), 0, sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
+
+            // stagingBuffer.Copy(tlasInstancesBuffer.GetBuffer(), tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
 
             auto tlasAccelStruct = createTLAS(_contextResources.GetVulkanResource(), commandBuffer, tlasInstancesBuffer, tlasInstances);
+
+            resourceStorage.Insert<Resources::VkBufferResource<>>(
+                TLAS_INSTANCES_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(tlasInstancesBuffer)));
 
             resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
                 TLAS_ACCEL_STRUCT_BUFFER_ID, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(tlasAccelStruct)));
 
-            resourceStorage.Insert<Resources::VkBufferResource<>>(
-                TLAS_INSTANCES_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(tlasInstancesBuffer)));
+        } else {
+            for (auto [entity, meshComponent, transformComponent] : meshView.each()) {
+                auto& meshResourceId     = meshComponent.resourceId;
+                auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
+
+                auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
+                // It must have value now.
+                auto& accelStructResource = accelStructureResourceOpt->get();
+
+                accelStructResource.DestroyScratchBuffer();
+            }
         }
 
-        for (auto& entity : meshView) {
-            auto& meshComponent      = meshView.get<Components::Mesh>(entity);
-            auto& meshResourceId     = meshComponent.resourceId;
-            auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
+        auto sbtBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(SBT_BUFFER_ID);
+        if (!sbtBufferOpt) {
+            auto pfnGetRayTracingShaderGroupHandlesKHR =
+                reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetRayTracingShaderGroupHandlesKHR"));
 
-            auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
-            // It must have value now.
-            auto& accelStructResource = accelStructureResourceOpt->get();
+            // Query RT pipeline properties for buffer sizing and alignment
+            VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+            VkPhysicalDeviceProperties2                     devProps{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &rtProps};
+            vkGetPhysicalDeviceProperties2(vulkan.GetPhysicalDevice(), &devProps);
 
-            accelStructResource.DestroyScratchBuffer();
+            const uint32_t handleSize      = rtProps.shaderGroupHandleSize;
+            const uint32_t handleAlignment = rtProps.shaderGroupHandleAlignment;
+            const uint32_t baseAlignment   = rtProps.shaderGroupBaseAlignment;
+
+            // Each SBT entry is handleSize rounded up to handleAlignment;
+            // each region is further rounded up to baseAlignment (required by the spec).
+            const uint32_t entrySize  = (handleSize + handleAlignment - 1u) & ~(handleAlignment - 1u);
+            const uint32_t regionSize = (entrySize + baseAlignment - 1u) & ~(baseAlignment - 1u);
+
+            // Retrieve raw handles for all 3 groups: raygen (0), miss (1), hit (2)
+            constexpr uint32_t   groupCount = 3;
+            std::vector<uint8_t> handles(groupCount * handleSize);
+            if (pfnGetRayTracingShaderGroupHandlesKHR(vulkan.GetDevice(), _pipeline, 0, groupCount, handles.size(), handles.data()) != VK_SUCCESS) {
+                throw std::runtime_error("vkGetRayTracingShaderGroupHandlesKHR failed");
+            }
+
+            // Allocate a host-visible SBT buffer: [raygen region | miss region | hit region]
+            const VkDeviceSize sbtSize = 3u * static_cast<VkDeviceSize>(regionSize);
+
+            auto sbtBuffer = Resources::VkBufferResource<>(
+                vmaAllocator,
+                sbtSize,
+                VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+            stagingBuffer.Copy(sbtBuffer.GetBuffer(), handles.data(), handleSize);                                  // raygen
+            stagingBuffer.Copy(sbtBuffer.GetBuffer(), handles.data() + 1u * entrySize, handleSize, regionSize);     // miss
+            stagingBuffer.Copy(sbtBuffer.GetBuffer(), handles.data() + 2u * entrySize, handleSize, 2 * regionSize); // hit
+
+            const VkDeviceAddress sbtAddress = sbtBuffer.GetBufferDeviceAddress();
+
+            _raygenShaderRegion   = {sbtAddress + 0u * regionSize, entrySize, entrySize};
+            _missShaderRegion     = {sbtAddress + 1u * regionSize, entrySize, entrySize};
+            _hitShaderRegion      = {sbtAddress + 2u * regionSize, entrySize, entrySize};
+            _callableShaderRegion = {};
+
+            resourceStorage.Insert<Resources::VkBufferResource<>>(SBT_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(sbtBuffer)));
         }
 
         vkEndCommandBuffer(commandBuffer);
@@ -616,38 +662,11 @@ namespace Prism::Systems
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        auto& registry = scene.GetRegistry();
-
         auto& resourceStorage = _contextResources.GetResourceStorage();
         auto& vulkanResource  = _contextResources.GetVulkanResource();
+        auto  currentFrame    = vulkanResource.GetCurrentFrameOffset();
 
-        VkRenderingAttachmentInfo colorAttachment{};
-        colorAttachment.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        colorAttachment.imageView   = renderTarget.GetColorImageView();
-        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-        colorAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
-        colorAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
-
-        VkRenderingAttachmentInfo depthAttachment{};
-        depthAttachment.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        depthAttachment.imageView   = renderTarget.GetDepthImageView();
-        depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        depthAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
-        depthAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
-
-        auto currentSwapchainExtent = vulkanResource.GetSwapchainExtent();
-
-        VkRenderingInfo renderingInfo{};
-        renderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        renderingInfo.renderArea.offset    = {0, 0};
-        renderingInfo.renderArea.extent    = {currentSwapchainExtent.width, currentSwapchainExtent.height};
-        renderingInfo.layerCount           = 1;
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments    = &colorAttachment;
-        renderingInfo.pDepthAttachment     = &depthAttachment;
-
-        auto currentFrame = vulkanResource.GetCurrentFrameOffset();
-
+        // Abort early if the common UBO or TLAS are not yet available
         auto commonUniformBufferOpt =
             resourceStorage.Get<Resources::VkBufferResource<Resources::CommonResource>>(Resources::CommonResource::UNIFORM_BUFFER_ID, currentFrame);
         if (!commonUniformBufferOpt) {
@@ -656,28 +675,60 @@ namespace Prism::Systems
         }
         auto& commonUniformBuffer = commonUniformBufferOpt->get();
 
-        updateDescriptorSet(vulkanResource.GetDevice(), _descriptorSets[currentFrame], commonUniformBuffer.GetBuffer());
+        auto tlasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_BUFFER_ID);
+        if (!tlasOpt) {
+            vkEndCommandBuffer(commandBuffer);
+            return;
+        }
+        VkAccelerationStructureKHR tlas = tlasOpt->get().GetAccelerationStructure();
 
-        vkCmdBeginRendering(commandBuffer, &renderingInfo);
+        // Transition the color image to VK_IMAGE_LAYOUT_GENERAL for storage-image writes
+        VkImageMemoryBarrier2 toGeneral{};
+        toGeneral.sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        toGeneral.srcStageMask     = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+        toGeneral.srcAccessMask    = VK_ACCESS_2_NONE;
+        toGeneral.dstStageMask     = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        toGeneral.dstAccessMask    = VK_ACCESS_2_SHADER_WRITE_BIT;
+        toGeneral.oldLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        toGeneral.newLayout        = VK_IMAGE_LAYOUT_GENERAL;
+        toGeneral.image            = renderTarget.GetColorImage();
+        toGeneral.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-        VkViewport viewport{};
-        viewport.x        = 0.0f;
-        viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(currentSwapchainExtent.width);
-        viewport.height   = static_cast<float>(currentSwapchainExtent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        VkDependencyInfo depInfoToGeneral{};
+        depInfoToGeneral.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        depInfoToGeneral.imageMemoryBarrierCount = 1;
+        depInfoToGeneral.pImageMemoryBarriers    = &toGeneral;
+        vkCmdPipelineBarrier2(commandBuffer, &depInfoToGeneral);
 
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = {currentSwapchainExtent.width, currentSwapchainExtent.height};
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        // Write all three descriptor bindings: UBO, TLAS, output storage image
+        updateDescriptorSet(vulkanResource.GetDevice(), _descriptorSets[currentFrame], commonUniformBuffer.GetBuffer(), tlas, renderTarget.GetColorImageView());
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout, 0, 1, &_descriptorSets[currentFrame], 0, nullptr);
+        // Dispatch ray tracing
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipeline);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipelineLayout, 0, 1, &_descriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdEndRendering(commandBuffer);
+        auto pfnCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(vulkanResource.GetDevice(), "vkCmdTraceRaysKHR"));
+
+        const auto extent = vulkanResource.GetSwapchainExtent();
+        pfnCmdTraceRaysKHR(commandBuffer, &_raygenShaderRegion, &_missShaderRegion, &_hitShaderRegion, &_callableShaderRegion, extent.width, extent.height, 1);
+
+        // Transition the color image back to COLOR_ATTACHMENT_OPTIMAL for presentation
+        VkImageMemoryBarrier2 toAttachment{};
+        toAttachment.sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        toAttachment.srcStageMask     = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        toAttachment.srcAccessMask    = VK_ACCESS_2_SHADER_WRITE_BIT;
+        toAttachment.dstStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        toAttachment.dstAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        toAttachment.oldLayout        = VK_IMAGE_LAYOUT_GENERAL;
+        toAttachment.newLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        toAttachment.image            = renderTarget.GetColorImage();
+        toAttachment.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+        VkDependencyInfo depInfoToAttachment{};
+        depInfoToAttachment.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        depInfoToAttachment.imageMemoryBarrierCount = 1;
+        depInfoToAttachment.pImageMemoryBarriers    = &toAttachment;
+        vkCmdPipelineBarrier2(commandBuffer, &depInfoToAttachment);
 
         vkEndCommandBuffer(commandBuffer);
     }

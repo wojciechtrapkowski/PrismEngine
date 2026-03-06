@@ -85,6 +85,8 @@ namespace Prism::Managers
         // This could be probably moved to frame swap system.
         vulkanResource.AdvanceFrame();
 
+        currentCommandPoolResource.Reset();
+
         auto renderTargetOpt =
             swapchainBoundResourceStorage.Get<Resources::RenderTargetResource>(RENDER_TARGET_RESOURCE_ID, vulkanResource.GetCurrentImageIndex());
         if (!renderTargetOpt) {
@@ -102,10 +104,10 @@ namespace Prism::Managers
         }
         auto& renderTarget = renderTargetOpt->get();
 
-        currentCommandPoolResource.Reset();
-
         { // Update
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
+
+            stagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
 
             _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
@@ -113,8 +115,6 @@ namespace Prism::Managers
             _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
             _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
-
-            stagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -134,7 +134,7 @@ namespace Prism::Managers
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
 
             _screenClearingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);
-            _meshDrawingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);
+            //_meshDrawingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);
             _raytracingDrawingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);
             _uiDrawingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);
             _gizmoDrawingSystem.Render(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, renderTarget);

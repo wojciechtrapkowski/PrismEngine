@@ -8,36 +8,38 @@
 
 #include <vector>
 
-namespace Prism::Resources {
-    struct PendingCopy {
-        VkBuffer destination;
+namespace Prism::Resources
+{
+    struct PendingCopy
+    {
+        VkBuffer     destination;
         VkBufferCopy region;
     };
 
-    struct VkStagingBufferResource : ResourceImpl<VkStagingBufferResource> {
+    struct VkStagingBufferResource : ResourceImpl<VkStagingBufferResource>
+    {
         VkStagingBufferResource(VmaAllocator allocator);
         ~VkStagingBufferResource() = default;
 
-        VkStagingBufferResource(VkStagingBufferResource &&other) noexcept;
+        VkStagingBufferResource(VkStagingBufferResource&& other) noexcept;
 
-        VkStagingBufferResource &operator=(VkStagingBufferResource &&other) noexcept;
+        VkStagingBufferResource& operator=(VkStagingBufferResource&& other) noexcept;
 
-        VkStagingBufferResource(const VkStagingBufferResource &) = delete;
-        VkStagingBufferResource &operator=(const VkStagingBufferResource &) = delete;
+        VkStagingBufferResource(const VkStagingBufferResource&)            = delete;
+        VkStagingBufferResource& operator=(const VkStagingBufferResource&) = delete;
 
-        void Copy(VkBuffer destination, void *data, size_t size);
+        void Copy(VkBuffer destination, void* data, size_t size, size_t offset = 0);
 
         void Commit(VkCommandBuffer commandBuffer);
 
-      private:
+    private:
         static constexpr const VkDeviceSize INITIAL_SIZE = 10000;
-        friend void swap(VkStagingBufferResource &first, VkStagingBufferResource &second) noexcept;
+        friend void                         swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept;
 
         VmaAllocator allocator = VK_NULL_HANDLE;
 
-        Resources::VkBufferResource<> stagingBuffer = {};
-        size_t currentlyUtilized = 0;
-
+        Resources::VkBufferResource<> stagingBuffer     = {};
+        size_t                        currentlyUtilized = 0;
 
         std::vector<PendingCopy> pendingCopies = {};
     };

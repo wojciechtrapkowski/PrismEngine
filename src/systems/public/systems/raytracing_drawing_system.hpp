@@ -50,7 +50,7 @@ namespace Prism::Systems
         std::vector<uint8_t>            _shaderHandles;
         VkStridedDeviceAddressRegionKHR _raygenShaderRegion{};
         VkStridedDeviceAddressRegionKHR _missShaderRegion{};
-        VkStridedDeviceAddressRegionKHR _hitShadeRegion{};
+        VkStridedDeviceAddressRegionKHR _hitShaderRegion{};
         VkStridedDeviceAddressRegionKHR _callableShaderRegion{};
 
         std::unordered_map<Resources::MeshResource::ID, std::vector<Components::Transform>> _blasToInstanceData;
