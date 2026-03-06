@@ -15,12 +15,14 @@ set(SYSTEMS_SOURCES
     ui_drawing_system.cpp
     gizmo_drawing_system.cpp
     window_resize_system.cpp
-    raytracing_drawing_system.cpp
+    mesh_drawing_system.cpp
+    
+    subsystems/rasterized_geometry_drawing_subsystem.cpp
+    subsystems/raytraced_geometry_drawing_system.cpp
 )
 
 set(SYSTEMS_HEADERS
     public/systems/screen_clearing_system.hpp
-    public/systems/mesh_drawing_system.hpp
     public/systems/present_system.hpp
     public/systems/input_control_system.hpp
     public/systems/event_poll_system.hpp
@@ -30,7 +32,10 @@ set(SYSTEMS_HEADERS
     public/systems/ui_drawing_system.hpp
     public/systems/gizmo_drawing_system.hpp
     public/systems/window_resize_system.hpp
-    public/systems/raytracing_drawing_system.hpp
+    public/systems/mesh_drawing_system.hpp
+
+    public/systems/subsystems/rasterized_geometry_drawing_subsystem.hpp
+    public/systems/subsystems/raytraced_geometry_drawing_system.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC

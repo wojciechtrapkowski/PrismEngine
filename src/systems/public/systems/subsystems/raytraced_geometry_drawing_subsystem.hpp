@@ -10,19 +10,19 @@
 
 #include <vector>
 
-namespace Prism::Systems
+namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
-    struct RaytracingDrawingSystem
+    struct RaytracedGeometryDrawingSubsystem
     {
     public:
-        RaytracingDrawingSystem(Resources::ContextResources& contextResources);
-        ~RaytracingDrawingSystem();
+        RaytracedGeometryDrawingSubsystem(Resources::ContextResources& contextResources);
+        ~RaytracedGeometryDrawingSubsystem();
 
-        RaytracingDrawingSystem(RaytracingDrawingSystem& other)            = delete;
-        RaytracingDrawingSystem& operator=(RaytracingDrawingSystem& other) = delete;
+        RaytracedGeometryDrawingSubsystem(RaytracedGeometryDrawingSubsystem& other)            = delete;
+        RaytracedGeometryDrawingSubsystem& operator=(RaytracedGeometryDrawingSubsystem& other) = delete;
 
-        RaytracingDrawingSystem(RaytracingDrawingSystem&& other)            = delete;
-        RaytracingDrawingSystem& operator=(RaytracingDrawingSystem&& other) = delete;
+        RaytracedGeometryDrawingSubsystem(RaytracedGeometryDrawingSubsystem&& other)            = delete;
+        RaytracedGeometryDrawingSubsystem& operator=(RaytracedGeometryDrawingSubsystem&& other) = delete;
 
         void Initialize();
 
@@ -31,10 +31,11 @@ namespace Prism::Systems
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 
     private:
-        inline static const Resources::Resource::ID SBT_BUFFER_ID            = std::hash<std::string_view>{}("RaytracingDrawingSystem/SBTBufferId");
-        inline static const Resources::Resource::ID TLAS_INSTANCES_BUFFER_ID = std::hash<std::string_view>{}("RaytracingDrawingSystem/TLASInstancesBufferId");
+        inline static const Resources::Resource::ID SBT_BUFFER_ID = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/SBTBufferId");
+        inline static const Resources::Resource::ID TLAS_INSTANCES_BUFFER_ID =
+            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASInstancesBufferId");
         inline static const Resources::Resource::ID TLAS_ACCEL_STRUCT_BUFFER_ID =
-            std::hash<std::string_view>{}("RaytracingDrawingSystem/TLASAccelStructBufferId");
+            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASAccelStructBufferId");
 
         Resources::ContextResources& _contextResources;
 
@@ -55,4 +56,4 @@ namespace Prism::Systems
 
         std::unordered_map<Resources::MeshResource::ID, std::vector<Components::Transform>> _blasToInstanceData;
     };
-}; // namespace Prism::Systems
+}; // namespace Prism::Systems::Subsystems::MeshDrawingSystem

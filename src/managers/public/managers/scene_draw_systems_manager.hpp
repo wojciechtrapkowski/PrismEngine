@@ -2,7 +2,6 @@
 
 #include "systems/gizmo_drawing_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
-#include "systems/raytracing_drawing_system.hpp"
 #include "systems/present_system.hpp"
 #include "systems/screen_clearing_system.hpp"
 #include "systems/ui_drawing_system.hpp"
@@ -37,12 +36,11 @@ namespace Prism::Managers
         inline static const size_t   RENDER_TARGET_RESOURCE_ID = std::hash<std::string_view>{}("SceneDrawSystemsManager/RenderTargetResource");
         Resources::ContextResources& _contextResources;
 
-        Systems::ScreenClearingSystem    _screenClearingSystem;
-        Systems::MeshDrawingSystem       _meshDrawingSystem;
-        Systems::RaytracingDrawingSystem _raytracingDrawingSystem;
-        Systems::GizmoDrawingSystem      _gizmoDrawingSystem;
-        Systems::UIDrawingSystem         _uiDrawingSystem;
-        Systems::PresentSystem           _presentSystem;
+        Systems::ScreenClearingSystem _screenClearingSystem;
+        Systems::MeshDrawingSystem    _meshDrawingSystem;
+        Systems::GizmoDrawingSystem   _gizmoDrawingSystem;
+        Systems::UIDrawingSystem      _uiDrawingSystem;
+        Systems::PresentSystem        _presentSystem;
 
         // That is temporary, need a place for that. This is per frame in flight.
         std::vector<Resources::VkCommandPoolResource> _commandPools     = {};

@@ -3,32 +3,37 @@
 #include "resources/context_resources.hpp"
 #include "resources/render_target_resource.hpp"
 #include "resources/scene.hpp"
+#include "resources/vulkan/vk_staging_buffer_resource.hpp"
 
-namespace Prism::Systems {
-    class MeshDrawingSystem {
-      public:
-        MeshDrawingSystem(Resources::ContextResources &contextResources);
+namespace Prism::Systems
+{
+    namespace Subsystems::MeshDrawingSystem
+    {
+        class RasterizedGeometryDrawingSubsystem;
+        class RaytracedGeometryDrawingSubsystem;
+    } // namespace Subsystems::MeshDrawingSystem
+    class MeshDrawingSystem
+    {
+    public:
+        MeshDrawingSystem(Resources::ContextResources& contextResources);
         ~MeshDrawingSystem();
 
-        MeshDrawingSystem(MeshDrawingSystem &other) = delete;
-        MeshDrawingSystem &operator=(MeshDrawingSystem &other) = delete;
+        MeshDrawingSystem(MeshDrawingSystem& other)            = delete;
+        MeshDrawingSystem& operator=(MeshDrawingSystem& other) = delete;
 
-        MeshDrawingSystem(MeshDrawingSystem &&other) = delete;
-        MeshDrawingSystem &operator=(MeshDrawingSystem &&other) = delete;
+        MeshDrawingSystem(MeshDrawingSystem&& other)            = delete;
+        MeshDrawingSystem& operator=(MeshDrawingSystem&& other) = delete;
 
         void Initialize();
 
-        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene &scene);
+        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
 
-        void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene &scene, Resources::RenderTargetResource &renderTarget);
+        void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 
-      private:
-        Resources::ContextResources &m_contextResources;
+    private:
+        Resources::ContextResources& _contextResources;
 
-        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSet> descriptorSets = {};
-        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-        VkPipeline pipeline = VK_NULL_HANDLE;
+        std::unique_ptr<Subsystems::MeshDrawingSystem::RasterizedGeometryDrawingSubsystem> _rasterizedGeometryDrawingSubsystem;
+        std::unique_ptr<Subsystems::MeshDrawingSystem::RaytracedGeometryDrawingSubsystem>  _raytracedGeometryDrawingSubsystem;
     };
 }; // namespace Prism::Systems

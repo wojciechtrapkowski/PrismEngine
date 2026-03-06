@@ -1,4 +1,4 @@
-#include "systems/raytracing_drawing_system.hpp"
+#include "systems/subsystems/raytraced_geometry_drawing_subsystem.hpp"
 
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
@@ -32,14 +32,14 @@
 #error "RAY_RCHIT_SHADER_PATH is not defined!"
 #endif
 
-namespace Prism::Systems
+namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
         constexpr auto MIN_ACCELERATION_STRUCTURE_SCRATCH_OFFSET_ALIGNMENT = 128;
 
         constexpr auto getMeshBLASId = [](Resources::MeshResource::ID id) {
-            return std::hash<std::string_view>{}(std::format("RaytracingDrawingSystem/BLAS/{}", id));
+            return std::hash<std::string_view>{}(std::format("RaytracedGeometryDrawingSubsystem/BLAS/{}", id));
         };
 
         VkDescriptorPool createDescriptorPool(VkDevice device)
@@ -443,7 +443,7 @@ namespace Prism::Systems
         }
     } // namespace
 
-    RaytracingDrawingSystem::RaytracingDrawingSystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
+    RaytracedGeometryDrawingSubsystem::RaytracedGeometryDrawingSubsystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
         auto&            vulkanResource = _contextResources.GetVulkanResource();
         VkDevice         device         = vulkanResource.GetDevice();
@@ -456,7 +456,7 @@ namespace Prism::Systems
         _pipeline            = createPipeline(device, physicalDevice, _pipelineLayout);
     };
 
-    RaytracingDrawingSystem::~RaytracingDrawingSystem()
+    RaytracedGeometryDrawingSubsystem::~RaytracedGeometryDrawingSubsystem()
     {
         auto&    vulkanResource = _contextResources.GetVulkanResource();
         VkDevice device         = vulkanResource.GetDevice();
@@ -479,18 +479,13 @@ namespace Prism::Systems
         }
     }
 
-    void RaytracingDrawingSystem::Initialize(){
+    void RaytracedGeometryDrawingSubsystem::Initialize(){
 
     };
 
-    void
-    RaytracingDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
+    void RaytracedGeometryDrawingSubsystem::Update(
+        float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
         auto& resourceStorage = _contextResources.GetResourceStorage();
         auto& vmaAllocator    = _contextResources.GetVulkanResource().GetVmaAllocator();
         auto& vulkan          = _contextResources.GetVulkanResource();
@@ -647,17 +642,11 @@ namespace Prism::Systems
 
             resourceStorage.Insert<Resources::VkBufferResource<>>(SBT_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(sbtBuffer)));
         }
-
-        vkEndCommandBuffer(commandBuffer);
     };
 
-    void RaytracingDrawingSystem::Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget)
+    void RaytracedGeometryDrawingSubsystem::Render(
+        float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget)
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
         auto& resourceStorage = _contextResources.GetResourceStorage();
         auto& vulkanResource  = _contextResources.GetVulkanResource();
         auto  currentFrame    = vulkanResource.GetCurrentFrameOffset();
@@ -666,14 +655,12 @@ namespace Prism::Systems
         auto commonUniformBufferOpt =
             resourceStorage.Get<Resources::VkBufferResource<Resources::CommonResource>>(Resources::CommonResource::UNIFORM_BUFFER_ID, currentFrame);
         if (!commonUniformBufferOpt) {
-            vkEndCommandBuffer(commandBuffer);
             return;
         }
         auto& commonUniformBuffer = commonUniformBufferOpt->get();
 
         auto tlasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_BUFFER_ID);
         if (!tlasOpt) {
-            vkEndCommandBuffer(commandBuffer);
             return;
         }
         VkAccelerationStructureKHR tlas = tlasOpt->get().GetAccelerationStructure();
@@ -725,7 +712,5 @@ namespace Prism::Systems
         depInfoToAttachment.imageMemoryBarrierCount = 1;
         depInfoToAttachment.pImageMemoryBarriers    = &toAttachment;
         vkCmdPipelineBarrier2(commandBuffer, &depInfoToAttachment);
-
-        vkEndCommandBuffer(commandBuffer);
     }
-} // namespace Prism::Systems
+} // namespace Prism::Systems::Subsystems::MeshDrawingSystem
