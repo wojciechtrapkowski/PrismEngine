@@ -7,6 +7,8 @@
 #include "systems/subsystems/rasterized_geometry_drawing_subsystem.hpp"
 #include "systems/subsystems/raytraced_geometry_drawing_subsystem.hpp"
 
+#include "components/systems_settings.hpp"
+
 #include "vulkan/vulkan.h"
 
 namespace Prism::Systems
@@ -31,6 +33,15 @@ namespace Prism::Systems
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
+        auto& registry            = scene.GetRegistry();
+        auto  systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
+
+        if (systemsSettingsView.empty()) {
+            auto systemsSettingsEntity = registry.create();
+            registry.emplace<Components::MeshDrawingSystemSettings>(systemsSettingsEntity);
+            systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
+        }
+
         _rasterizedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene);
         _raytracedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene, stagingBuffer);
 
@@ -44,8 +55,19 @@ namespace Prism::Systems
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        _rasterizedGeometryDrawingSubsystem->Render(deltaTime, commandBuffer, scene, renderTarget);
-        _raytracedGeometryDrawingSubsystem->Render(deltaTime, commandBuffer, scene, renderTarget);
+        auto& registry            = scene.GetRegistry();
+        auto  systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
+        if (systemsSettingsView.empty()) {
+            throw std::runtime_error("MeshDrawingSystemSettings component is missing!");
+        }
+
+        auto& settings = systemsSettingsView.get<Components::MeshDrawingSystemSettings>(systemsSettingsView.front());
+
+        if (settings.drawingMode == Components::MeshDrawingSystemSettings::MeshDrawingMode::RASTERIZATION) {
+            _rasterizedGeometryDrawingSubsystem->Render(deltaTime, commandBuffer, scene, renderTarget);
+        } else {
+            _raytracedGeometryDrawingSubsystem->Render(deltaTime, commandBuffer, scene, renderTarget);
+        }
 
         vkEndCommandBuffer(commandBuffer);
     }

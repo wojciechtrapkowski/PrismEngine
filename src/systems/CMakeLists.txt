@@ -35,7 +35,7 @@ set(SYSTEMS_HEADERS
     public/systems/mesh_drawing_system.hpp
 
     public/systems/subsystems/rasterized_geometry_drawing_subsystem.hpp
-    public/systems/subsystems/raytraced_geometry_drawing_system.hpp
+    public/systems/subsystems/raytraced_geometry_drawing_subsystem.hpp
 )
 
 add_library(${PRISM_SYSTEMS_LIBRARY_NAME} STATIC
