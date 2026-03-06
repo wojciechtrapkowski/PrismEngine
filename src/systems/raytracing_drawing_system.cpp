@@ -264,7 +264,7 @@ namespace Prism::Systems
         };
 
         Resources::VkAccelerationStructureResource
-        createAccelerationStructureFromMesh(Resources::VulkanResource& vulkan, VkCommandBuffer commandBuffer, Resources::MeshResource& mesh)
+        createBLASFromMesh(Resources::VulkanResource& vulkan, VkCommandBuffer commandBuffer, Resources::MeshResource& mesh)
         {
             auto pfnGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(
                 vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureBuildSizesKHR"));
@@ -514,7 +514,7 @@ namespace Prism::Systems
 
             auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
             if (!accelStructureResourceOpt) {
-                auto accel = createAccelerationStructureFromMesh(_contextResources.GetVulkanResource(), commandBuffer, mesh);
+                auto accel = createBLASFromMesh(_contextResources.GetVulkanResource(), commandBuffer, mesh);
 
                 resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
                     blasMeshResourceId, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(accel)));
@@ -566,6 +566,7 @@ namespace Prism::Systems
             }
 
             resourceStorage.Delete(TLAS_INSTANCES_BUFFER_ID);
+            resourceStorage.Delete(TLAS_ACCEL_STRUCT_BUFFER_ID);
 
             Resources::VkBufferResource<> tlasInstancesBuffer{
                 vmaAllocator,
@@ -574,13 +575,8 @@ namespace Prism::Systems
                     VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU};
 
-            void* data;
-            vmaMapMemory(vmaAllocator, tlasInstancesBuffer.GetAllocation(), &data);
-            memcpy(data, tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
-            vmaUnmapMemory(vmaAllocator, tlasInstancesBuffer.GetAllocation());
-            vmaFlushAllocation(vmaAllocator, tlasInstancesBuffer.GetAllocation(), 0, sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
-
-            // stagingBuffer.Copy(tlasInstancesBuffer.GetBuffer(), tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
+            stagingBuffer.CopyImmediately(
+                commandBuffer, tlasInstancesBuffer, tlasInstances.data(), sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
 
             auto tlasAccelStruct = createTLAS(_contextResources.GetVulkanResource(), commandBuffer, tlasInstancesBuffer, tlasInstances);
 

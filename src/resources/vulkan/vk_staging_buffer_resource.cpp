@@ -64,6 +64,15 @@ namespace Prism::Resources
         currentlyUtilized += size;
     }
 
+    void VkStagingBufferResource::CopyImmediately(VkCommandBuffer commandBuffer, Resources::VkBufferResource<>& destination, void* data, size_t size)
+    {
+        void* mappedData;
+        vmaMapMemory(allocator, destination.GetAllocation(), &mappedData);
+        std::memcpy(static_cast<char*>(mappedData), data, size);
+        vmaUnmapMemory(allocator, destination.GetAllocation());
+        vmaFlushAllocation(allocator, destination.GetAllocation(), 0, size);
+    }
+
     void VkStagingBufferResource::Commit(VkCommandBuffer commandBuffer)
     {
         VkCommandBufferBeginInfo beginInfo{};
