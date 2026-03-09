@@ -8,6 +8,7 @@ endif()
 include_directories(${PRISM_DEPENDENCIES_INCLUDE_DIRS})
 
 add_compile_definitions(GLFW_INCLUDE_NONE)
+add_compile_definitions(IMGUI_IMPL_VULKAN_USE_VOLK)
 
 # Add subdirectories
 add_subdirectory(context)

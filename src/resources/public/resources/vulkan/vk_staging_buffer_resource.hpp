@@ -3,8 +3,8 @@
 #include "resources/resource.hpp"
 #include "resources/vulkan/vk_buffer_resource.hpp"
 
+#include "volk/volk.h"
 #include "vk_mem_alloc.h"
-#include "vulkan/vulkan.h"
 
 #include <vector>
 

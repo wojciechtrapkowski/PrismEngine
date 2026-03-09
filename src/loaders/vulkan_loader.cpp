@@ -3,7 +3,9 @@
 #include "utils/vulkan/common.hpp"
 #include "utils/vulkan/debug_messenger.hpp"
 
+#include "volk/volk.h"
 #include "GLFW/glfw3.h"
+#define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
 #include <algorithm>
@@ -282,7 +284,10 @@ namespace Prism::Loaders
     VulkanLoader::result_type VulkanLoader::operator()(Resources::WindowResource& windowResource)
     {
         try {
+            volkInitialize();
+
             auto instance = createInstance();
+            volkLoadInstance(instance);
 #ifdef DEBUG
             auto debugMessenger = std::make_unique<Utils::Vulkan::DebugMessenger>(instance);
 #else
@@ -296,6 +301,7 @@ namespace Prism::Loaders
             Utils::Vulkan::Common::QueueFamilyIndices indices = Utils::Vulkan::Common::findQueueFamilies(surface, physicalDevice);
 
             auto [device, additionalDeviceExtensions] = createLogicalDevice(physicalDevice, indices);
+            volkLoadDevice(device);
 
             auto [graphicsQueue, presentationQueue] = getQueues(device, indices);
 
@@ -304,15 +310,50 @@ namespace Prism::Loaders
 
             std::cout << "Vulkan loaded successfully!" << std::endl;
 
-            VmaAllocator allocator;
+            VmaAllocator allocator = VK_NULL_HANDLE;
 
             VmaAllocatorCreateInfo allocatorInfo = {};
             allocatorInfo.flags                  = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
             allocatorInfo.physicalDevice         = physicalDevice;
             allocatorInfo.device                 = device;
             allocatorInfo.instance               = instance;
+            allocatorInfo.vulkanApiVersion       = VK_API_VERSION_1_3;
 
-            vmaCreateAllocator(&allocatorInfo, &allocator);
+            VmaVulkanFunctions vmaVulkanFunctions                  = {};
+            vmaVulkanFunctions.vkGetInstanceProcAddr               = vkGetInstanceProcAddr;
+            vmaVulkanFunctions.vkGetDeviceProcAddr                 = vkGetDeviceProcAddr;
+            vmaVulkanFunctions.vkGetPhysicalDeviceProperties       = vkGetPhysicalDeviceProperties;
+            vmaVulkanFunctions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+            vmaVulkanFunctions.vkAllocateMemory                    = vkAllocateMemory;
+            vmaVulkanFunctions.vkFreeMemory                        = vkFreeMemory;
+            vmaVulkanFunctions.vkMapMemory                         = vkMapMemory;
+            vmaVulkanFunctions.vkUnmapMemory                       = vkUnmapMemory;
+            vmaVulkanFunctions.vkFlushMappedMemoryRanges           = vkFlushMappedMemoryRanges;
+            vmaVulkanFunctions.vkInvalidateMappedMemoryRanges      = vkInvalidateMappedMemoryRanges;
+            vmaVulkanFunctions.vkBindBufferMemory                  = vkBindBufferMemory;
+            vmaVulkanFunctions.vkBindImageMemory                   = vkBindImageMemory;
+            vmaVulkanFunctions.vkGetBufferMemoryRequirements       = vkGetBufferMemoryRequirements;
+            vmaVulkanFunctions.vkGetImageMemoryRequirements        = vkGetImageMemoryRequirements;
+            vmaVulkanFunctions.vkCreateBuffer                      = vkCreateBuffer;
+            vmaVulkanFunctions.vkDestroyBuffer                     = vkDestroyBuffer;
+            vmaVulkanFunctions.vkCreateImage                       = vkCreateImage;
+            vmaVulkanFunctions.vkDestroyImage                      = vkDestroyImage;
+            vmaVulkanFunctions.vkCmdCopyBuffer                     = vkCmdCopyBuffer;
+            // Vulkan 1.1+
+            vmaVulkanFunctions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
+            vmaVulkanFunctions.vkGetBufferMemoryRequirements2KHR       = vkGetBufferMemoryRequirements2;
+            vmaVulkanFunctions.vkGetImageMemoryRequirements2KHR        = vkGetImageMemoryRequirements2;
+            vmaVulkanFunctions.vkBindBufferMemory2KHR                  = vkBindBufferMemory2;
+            vmaVulkanFunctions.vkBindImageMemory2KHR                   = vkBindImageMemory2;
+            // Vulkan 1.3+
+            vmaVulkanFunctions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
+            vmaVulkanFunctions.vkGetDeviceImageMemoryRequirements  = vkGetDeviceImageMemoryRequirements;
+
+            allocatorInfo.pVulkanFunctions = &vmaVulkanFunctions;
+
+            if (vmaCreateAllocator(&allocatorInfo, &allocator) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create VMA allocator!");
+            }
 
             return Resources::VulkanResource(
                 instance,

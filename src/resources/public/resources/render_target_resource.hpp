@@ -2,8 +2,8 @@
 
 #include "resources/resource.hpp"
 
+#include "volk/volk.h"
 #include "vk_mem_alloc.h"
-#include "vulkan/vulkan.h"
 
 #include <optional>
 
@@ -41,8 +41,8 @@ namespace Prism::Resources
 
     private:
         // For now, maybe in the future parametrize it. TODO: Move it to VulkanResource
-        static const VkFormat              COLOR_FORMAT      = VK_FORMAT_R8G8B8A8_UNORM;
-        static const VkFormat              DEPTH_FORMAT      = VK_FORMAT_D32_SFLOAT_S8_UINT;
+        static const VkFormat COLOR_FORMAT      = VK_FORMAT_R8G8B8A8_UNORM;
+        static const VkFormat DEPTH_FORMAT      = VK_FORMAT_D32_SFLOAT_S8_UINT;
         VkSampleCountFlagBits NUMBER_OF_SAMPLES = VK_SAMPLE_COUNT_1_BIT;
 
         VkDevice     device    = VK_NULL_HANDLE;

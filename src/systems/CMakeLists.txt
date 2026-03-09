@@ -65,7 +65,7 @@ target_link_libraries(${PRISM_SYSTEMS_LIBRARY_NAME}
         Prism_Utils
         Prism_UI
         Prism_Shaders
-        ${Vulkan}
+        volk
 )
 
 target_include_directories(${PRISM_SYSTEMS_LIBRARY_NAME}

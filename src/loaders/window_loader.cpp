@@ -1,19 +1,21 @@
 #include "loaders/window_loader.hpp"
 
-#include "vulkan/vulkan.h"
+#include "volk/volk.h"
 #include <GLFW/glfw3.h>
 
 #include <iostream>
 #include <stdexcept>
 
-namespace Prism::Loaders {
-    namespace /* anonymous */ {
-        const int SCR_WIDTH = 1200;
+namespace Prism::Loaders
+{
+    namespace /* anonymous */
+    {
+        const int SCR_WIDTH  = 1200;
         const int SCR_HEIGHT = 600;
     } // namespace
 
-    WindowLoader::result_type WindowLoader::operator()() const {
-
+    WindowLoader::result_type WindowLoader::operator()() const
+    {
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize GLFW!");
         }

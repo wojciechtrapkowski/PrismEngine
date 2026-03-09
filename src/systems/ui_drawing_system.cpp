@@ -7,7 +7,7 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
 
-#include "vulkan/vulkan.h"
+#include "volk/volk.h"
 
 #include "resources/vulkan/vk_framebuffer_resource.hpp"
 

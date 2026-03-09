@@ -1,12 +1,12 @@
 #include "resources/vulkan_resource.hpp"
 
-#define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
 #include "utils/vulkan/common.hpp"
 
 #include <set>
 #include <utility>
+#include <algorithm>
 
 namespace Prism::Resources
 {

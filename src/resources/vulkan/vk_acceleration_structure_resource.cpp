@@ -10,13 +10,11 @@ namespace Prism::Resources
 
     VkAccelerationStructureResource::~VkAccelerationStructureResource()
     {
-        auto pfnDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetDeviceProcAddr(_device, "vkDestroyAccelerationStructureKHR");
-
         if (_accelStruct == VK_NULL_HANDLE) {
             return;
         }
 
-        pfnDestroyAccelerationStructureKHR(_device, _accelStruct, nullptr);
+        vkDestroyAccelerationStructureKHR(_device, _accelStruct, nullptr);
 
         _accelStruct = VK_NULL_HANDLE;
     }

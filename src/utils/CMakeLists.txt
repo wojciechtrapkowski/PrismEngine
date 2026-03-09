@@ -25,7 +25,7 @@ target_link_libraries(
     ${PRISM_UTILS_LIBRARY_NAME} 
     PUBLIC
         glfw
-        ${Vulkan}
+        volk
 
 )
 

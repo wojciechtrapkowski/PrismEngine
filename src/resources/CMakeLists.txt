@@ -60,7 +60,7 @@ target_link_libraries(${PRISM_RESOURCES_LIBRARY_NAME}
         imgui
         EnTT
         VulkanMemoryAllocator
-        ${Vulkan}
+        volk
         Prism_Components
         Prism_Utils
 )

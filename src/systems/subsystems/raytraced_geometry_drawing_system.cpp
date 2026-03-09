@@ -18,7 +18,7 @@
 #include <vector>
 #include <cstring>
 
-#include "vulkan/vulkan.h"
+#include "volk/volk.h"
 
 #ifndef RAY_RGEN_SHADER_PATH
 #error "RAY_RGEN_SHADER_PATH is not defined!"
@@ -150,9 +150,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
         VkPipeline createPipeline(VkDevice device, VkPhysicalDevice physicalDevice, VkPipelineLayout pipelineLayout)
         {
-            auto pfnCreateRayTracingPipelinesKHR =
-                reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
-
             // Load shader modules
             VkShaderModule rgenModule  = Utils::Vulkan::Common::loadShaderModule(device, RAY_RGEN_SHADER_PATH);
             VkShaderModule rmissModule = Utils::Vulkan::Common::loadShaderModule(device, RAY_RMISS_SHADER_PATH);
@@ -198,7 +195,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             pipelineCreateInfo.layout                       = pipelineLayout;
 
             VkPipeline pipeline{};
-            if (pfnCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
+            if (vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) != VK_SUCCESS) {
                 vkDestroyShaderModule(device, rgenModule, nullptr);
                 vkDestroyShaderModule(device, rmissModule, nullptr);
                 vkDestroyShaderModule(device, rchitModule, nullptr);
@@ -266,13 +263,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         Resources::VkAccelerationStructureResource
         createBLASFromMesh(Resources::VulkanResource& vulkan, VkCommandBuffer commandBuffer, Resources::MeshResource& mesh)
         {
-            auto pfnGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(
-                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureBuildSizesKHR"));
-            auto pfnCreateAccelerationStructureKHR =
-                reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCreateAccelerationStructureKHR"));
-            auto pfnCmdBuildAccelerationStructuresKHR =
-                reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCmdBuildAccelerationStructuresKHR"));
-
             VkAccelerationStructureKHR accelStruct{};
 
             // Prepare geometry
@@ -315,7 +305,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             // Create buffers for acceleration structure and scratch space
             VkAccelerationStructureBuildSizesInfoKHR accelBuildSize{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
-            pfnGetAccelerationStructureBuildSizesKHR(
+            vkGetAccelerationStructureBuildSizesKHR(
                 vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &accelBuildSize);
 
             Resources::VkBufferResource<> accelerationStructureBuffer{
@@ -339,7 +329,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             // Create and build acceleration structure
 
-            if (pfnCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
+            if (vkCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to create acceleration structure!");
             }
 
@@ -348,7 +338,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelRangeInfo;
 
-            pfnCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
+            vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
 
             return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
         }
@@ -366,13 +356,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<>&                   tlasInstancesBuffer,
             std::vector<VkAccelerationStructureInstanceKHR>& instances)
         {
-            auto pfnGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(
-                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureBuildSizesKHR"));
-            auto pfnCreateAccelerationStructureKHR =
-                reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCreateAccelerationStructureKHR"));
-            auto pfnCmdBuildAccelerationStructuresKHR =
-                reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkCmdBuildAccelerationStructuresKHR"));
-
             VkAccelerationStructureGeometryInstancesDataKHR geometryInstances{
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
                 .data  = {.deviceAddress = tlasInstancesBuffer.GetBufferDeviceAddress()}};
@@ -404,7 +387,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             // Create buffers for acceleration structure and scratch space
             VkAccelerationStructureBuildSizesInfoKHR accelBuildSize{.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
-            pfnGetAccelerationStructureBuildSizesKHR(
+            vkGetAccelerationStructureBuildSizesKHR(
                 vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &accelBuildSize);
 
             Resources::VkBufferResource<> accelerationStructureBuffer{
@@ -428,7 +411,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             // Create and build acceleration structure
 
-            if (pfnCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
+            if (vkCreateAccelerationStructureKHR(vulkan.GetDevice(), &accelCreateInfo, nullptr, &accelStruct) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to create acceleration structure!");
             }
 
@@ -437,7 +420,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelBuildRangeInfo;
 
-            pfnCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
+            vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
 
             return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
         }
@@ -531,9 +514,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             }
             tlasInstances.reserve(tlasInstancesVectorSize);
 
-            auto pfnGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(
-                vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetAccelerationStructureDeviceAddressKHR"));
-
             for (const auto& [blasMeshResourceId, instances] : _blasToInstanceData) {
                 auto blasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!blasOpt) {
@@ -550,7 +530,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     VkAccelerationStructureInstanceKHR asInstance{};
                     asInstance.transform                              = toTransformMatrixKHR(instance.transform);
                     asInstance.instanceCustomIndex                    = instanceIndex;
-                    asInstance.accelerationStructureReference         = pfnGetAccelerationStructureDeviceAddressKHR(vulkan.GetDevice(), &addressInfo);
+                    asInstance.accelerationStructureReference         = vkGetAccelerationStructureDeviceAddressKHR(vulkan.GetDevice(), &addressInfo);
                     asInstance.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
                     asInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // No culling - double sided
                     asInstance.mask                                   = 0xFF;
@@ -596,9 +576,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
         auto sbtBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(SBT_BUFFER_ID);
         if (!sbtBufferOpt) {
-            auto pfnGetRayTracingShaderGroupHandlesKHR =
-                reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(vulkan.GetDevice(), "vkGetRayTracingShaderGroupHandlesKHR"));
-
             // Query RT pipeline properties for buffer sizing and alignment
             VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
             VkPhysicalDeviceProperties2                     devProps{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &rtProps};
@@ -616,7 +593,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             // Retrieve raw handles for all 3 groups: raygen (0), miss (1), hit (2)
             constexpr uint32_t   groupCount = 3;
             std::vector<uint8_t> handles(groupCount * handleSize);
-            if (pfnGetRayTracingShaderGroupHandlesKHR(vulkan.GetDevice(), _pipeline, 0, groupCount, handles.size(), handles.data()) != VK_SUCCESS) {
+            if (vkGetRayTracingShaderGroupHandlesKHR(vulkan.GetDevice(), _pipeline, 0, groupCount, handles.size(), handles.data()) != VK_SUCCESS) {
                 throw std::runtime_error("vkGetRayTracingShaderGroupHandlesKHR failed");
             }
 
@@ -690,10 +667,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipeline);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipelineLayout, 0, 1, &_descriptorSets[currentFrame], 0, nullptr);
 
-        auto pfnCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(vulkanResource.GetDevice(), "vkCmdTraceRaysKHR"));
-
         const auto extent = vulkanResource.GetSwapchainExtent();
-        pfnCmdTraceRaysKHR(commandBuffer, &_raygenShaderRegion, &_missShaderRegion, &_hitShaderRegion, &_callableShaderRegion, extent.width, extent.height, 1);
+        vkCmdTraceRaysKHR(commandBuffer, &_raygenShaderRegion, &_missShaderRegion, &_hitShaderRegion, &_callableShaderRegion, extent.width, extent.height, 1);
 
         // Transition the color image back to COLOR_ATTACHMENT_OPTIMAL for presentation
         VkImageMemoryBarrier2 toAttachment{};

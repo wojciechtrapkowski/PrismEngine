@@ -3,7 +3,7 @@
 #include "resources/resource.hpp"
 #include "resources/vulkan/vk_buffer_resource.hpp"
 
-#include "vulkan/vulkan.h"
+#include "volk/volk.h"
 
 namespace Prism::Resources
 {

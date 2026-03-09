@@ -2,8 +2,8 @@
 
 #include "resources/resource.hpp"
 
+#include "volk/volk.h"
 #include "vk_mem_alloc.h"
-#include "vulkan/vulkan.h"
 
 #include <cstddef>
 #include <stdexcept>
