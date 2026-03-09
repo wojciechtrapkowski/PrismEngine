@@ -4,21 +4,20 @@
 
 #include "events/move_events.hpp"
 
-namespace Prism::Systems {
-    namespace {}; // namespace
+namespace Prism::Systems
+{
+    namespace
+    {}; // namespace
 
-    EventPollSystem::EventPollSystem(Resources::ContextResources &contextResources) : m_contextResources(contextResources) {};
+    EventPollSystem::EventPollSystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void EventPollSystem::Initialize() {
-
-    };
-
-    void EventPollSystem::Update(float deltaTime) {
+    void EventPollSystem::Update(float deltaTime)
+    {
         glfwPollEvents();
 
-        auto &dispatcher = m_contextResources.GetDispatcher();
+        auto& dispatcher = m_contextResources.GetDispatcher();
 
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO();
 
         if (io.WantCaptureMouse) {
             dispatcher.clear<Events::MouseMoveEvent>();

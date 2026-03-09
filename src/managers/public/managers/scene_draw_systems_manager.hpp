@@ -28,8 +28,6 @@ namespace Prism::Managers
         SceneDrawSystemsManager(SceneDrawSystemsManager&&)            = delete;
         SceneDrawSystemsManager& operator=(SceneDrawSystemsManager&&) = delete;
 
-        void Initialize();
-
         void Update(float deltaTime, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
 
     private:

@@ -22,10 +22,6 @@ namespace Prism::Systems
 
     MeshDrawingSystem::~MeshDrawingSystem() {}
 
-    void MeshDrawingSystem::Initialize(){
-
-    };
-
     void MeshDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
     {
         VkCommandBufferBeginInfo beginInfo{};

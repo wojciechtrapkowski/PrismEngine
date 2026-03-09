@@ -24,8 +24,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         RaytracedGeometryDrawingSubsystem(RaytracedGeometryDrawingSubsystem&& other)            = delete;
         RaytracedGeometryDrawingSubsystem& operator=(RaytracedGeometryDrawingSubsystem&& other) = delete;
 
-        void Initialize();
-
         void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);

@@ -479,16 +479,16 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
-    void RaytracedGeometryDrawingSubsystem::Initialize(){
-
-    };
-
     void RaytracedGeometryDrawingSubsystem::Update(
         float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
     {
         auto& resourceStorage = _contextResources.GetResourceStorage();
         auto& vmaAllocator    = _contextResources.GetVulkanResource().GetVmaAllocator();
         auto& vulkan          = _contextResources.GetVulkanResource();
+
+        if (!(vulkan.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE)) {
+            return;
+        }
 
         auto meshView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
 

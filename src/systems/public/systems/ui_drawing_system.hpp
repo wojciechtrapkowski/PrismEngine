@@ -24,8 +24,6 @@ namespace Prism::Systems
         UIDrawingSystem(UIDrawingSystem&&)            = delete;
         UIDrawingSystem& operator=(UIDrawingSystem&&) = delete;
 
-        void Initialize();
-
         void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);

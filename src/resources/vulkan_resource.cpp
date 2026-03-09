@@ -198,6 +198,7 @@ namespace Prism::Resources
         swap(first.currentFrameOffset, second.currentFrameOffset);
 
         swap(first.debugMessenger, second.debugMessenger);
+        swap(first.additionalExtensions, second.additionalExtensions);
     }
 
     void VulkanResource::RecreateSwapchain(int newWidth, int newHeight)

@@ -21,8 +21,6 @@ namespace Prism::Systems
         m_cameraSettingsUI{contextResources}, _systemsSettingsUI{contextResources}
     {}
 
-    void UIDrawingSystem::Initialize() {}
-
     void UIDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
     {
         VkCommandBufferBeginInfo beginInfo{};

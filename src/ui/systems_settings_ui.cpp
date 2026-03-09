@@ -17,6 +17,8 @@ namespace Prism::UI
     {
         ImGui::Begin("Systems Settings");
 
+        auto& vulkan = _contextResources.GetVulkanResource();
+
         auto& registry = scene.GetRegistry();
 
         auto meshDrawingSystemSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
@@ -26,9 +28,14 @@ namespace Prism::UI
 
             auto& meshDrawingSystemSettings = meshDrawingSystemSettingsView.get<Components::MeshDrawingSystemSettings>(meshDrawingSystemSettingsView.front());
 
-            const char* drawingModeItems[] = {"Rasterization", "Raytracing"};
-            int         currentItem        = static_cast<int>(meshDrawingSystemSettings.drawingMode);
-            if (ImGui::Combo("Mesh Drawing Mode", &currentItem, drawingModeItems, IM_ARRAYSIZE(drawingModeItems))) {
+            std::vector<const char*> drawingModeItems = {"Rasterization"};
+
+            if (vulkan.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE) {
+                drawingModeItems.push_back("Raytracing");
+            }
+
+            int currentItem = static_cast<int>(meshDrawingSystemSettings.drawingMode);
+            if (ImGui::Combo("Mesh Drawing Mode", &currentItem, drawingModeItems.data(), static_cast<int>(drawingModeItems.size()))) {
                 meshDrawingSystemSettings.drawingMode = static_cast<Components::MeshDrawingSystemSettings::MeshDrawingMode>(currentItem);
             }
             ImGui::EndGroup();

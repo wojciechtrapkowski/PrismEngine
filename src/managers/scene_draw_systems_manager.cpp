@@ -35,9 +35,8 @@ namespace Prism::Managers
     } // namespace
 
     SceneDrawSystemsManager::SceneDrawSystemsManager(Resources::ContextResources& contextResources) :
-        _contextResources(contextResources), _screenClearingSystem{contextResources}, _meshDrawingSystem{contextResources},
-        _uiDrawingSystem{contextResources}, _presentSystem{contextResources},
-        _gizmoDrawingSystem{contextResources}
+        _contextResources(contextResources), _screenClearingSystem{contextResources}, _meshDrawingSystem{contextResources}, _uiDrawingSystem{contextResources},
+        _presentSystem{contextResources}, _gizmoDrawingSystem{contextResources}
     {
         auto& vulkanResource           = _contextResources.GetVulkanResource();
         auto  device                   = vulkanResource.GetDevice();
@@ -60,15 +59,6 @@ namespace Prism::Managers
         for (auto& sem : _renderSemaphores) {
             vkDestroySemaphore(vulkanResource.GetDevice(), sem, nullptr);
         }
-    }
-
-    void SceneDrawSystemsManager::Initialize()
-    {
-        _screenClearingSystem.Initialize();
-        _meshDrawingSystem.Initialize();
-        _gizmoDrawingSystem.Initialize();
-        _uiDrawingSystem.Initialize();
-        _presentSystem.Initialize();
     }
 
     void SceneDrawSystemsManager::Update(float deltaTime, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)

@@ -3,16 +3,20 @@
 #include "events/app_events.hpp"
 #include "events/move_events.hpp"
 
-namespace Prism::Systems {
-    namespace {
-        void handleWindowClose(entt::dispatcher &dispatcher, Resources::WindowResource &windowResource) {
+namespace Prism::Systems
+{
+    namespace
+    {
+        void handleWindowClose(entt::dispatcher& dispatcher, Resources::WindowResource& windowResource)
+        {
             auto window = windowResource.GetWindow();
             if (glfwWindowShouldClose(window)) {
                 dispatcher.enqueue<Events::WindowCloseEvent>(Events::WindowCloseEvent{});
             }
         }
 
-        void handleWindowResize(entt::dispatcher &dispatcher, Resources::WindowResource &windowResource) {
+        void handleWindowResize(entt::dispatcher& dispatcher, Resources::WindowResource& windowResource)
+        {
             auto [currentWidth, currentHeight] = windowResource.GetWindowExtent();
 
             int width, height;
@@ -27,7 +31,8 @@ namespace Prism::Systems {
             }
         }
 
-        void handleKeyPress(entt::dispatcher &dispatcher, GLFWwindow *window) {
+        void handleKeyPress(entt::dispatcher& dispatcher, GLFWwindow* window)
+        {
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
                 dispatcher.enqueue<Events::KeyPressEvent>(
                     Events::KeyPressEvent{.action = Events::MoveEvents::InputAction::Pressed, .key = Events::MoveEvents::Keys::SPACE});
@@ -69,13 +74,15 @@ namespace Prism::Systems {
             }
         }
 
-        void handleMouseMovement(entt::dispatcher &dispatcher, GLFWwindow *window) {
+        void handleMouseMovement(entt::dispatcher& dispatcher, GLFWwindow* window)
+        {
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
             dispatcher.enqueue<Events::MouseMoveEvent>(Events::MouseMoveEvent{.position = {xpos, ypos}});
         }
 
-        void handleMouseButtonPress(entt::dispatcher &dispatcher, GLFWwindow *window) {
+        void handleMouseButtonPress(entt::dispatcher& dispatcher, GLFWwindow* window)
+        {
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
                 dispatcher.enqueue<Events::MouseButtonPressEvent>(
                     Events::MouseButtonPressEvent{.action = Events::MoveEvents::InputAction::Pressed, .button = Events::MoveEvents::MouseButton::Right});
@@ -87,14 +94,13 @@ namespace Prism::Systems {
         }
     } // namespace
 
-    InputControlSystem::InputControlSystem(Resources::ContextResources &contextResources) : m_contextResources(contextResources) {};
+    InputControlSystem::InputControlSystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void InputControlSystem::Initialize() {};
-
-    void InputControlSystem::Update(float deltaTime) {
-        auto &dispatcher = m_contextResources.GetDispatcher();
-        auto &window = m_contextResources.GetWindowResource();
-        auto windowPtr = window.GetWindow();
+    void InputControlSystem::Update(float deltaTime)
+    {
+        auto& dispatcher = m_contextResources.GetDispatcher();
+        auto& window     = m_contextResources.GetWindowResource();
+        auto  windowPtr  = window.GetWindow();
 
         handleWindowClose(dispatcher, window);
         handleWindowResize(dispatcher, window);

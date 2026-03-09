@@ -314,10 +314,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
-    void RasterizedGeometryDrawingSubsystem::Initialize(){
-
-    };
-
     void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene){
 
     };

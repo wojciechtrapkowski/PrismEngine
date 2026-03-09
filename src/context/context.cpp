@@ -18,30 +18,33 @@
 #include "resources/context_resources.hpp"
 #include "resources/scene.hpp"
 
-
 #include <format>
 #include <iostream>
 
-namespace Prism::Context {
-    namespace {
-        struct FPSCounter {
-            size_t frames = 0;
+namespace Prism::Context
+{
+    namespace
+    {
+        struct FPSCounter
+        {
+            size_t frames   = 0;
             double lastTime = glfwGetTime();
         };
 
-        Resources::ContextResources createContextResources() {
+        Resources::ContextResources createContextResources()
+        {
             Loaders::WindowLoader windowLoader;
-            auto windowResource = windowLoader();
+            auto                  windowResource = windowLoader();
 
             Loaders::VulkanLoader vulkanLoader;
-            auto vulkanResource = vulkanLoader(windowResource);
+            auto                  vulkanResource = vulkanLoader(windowResource);
 
             if (!vulkanResource) {
                 throw std::runtime_error("Couldn't load Vulkan!");
             }
 
             Loaders::ImGuiLoader imGuiLoader;
-            auto imguiResource = imGuiLoader(windowResource, vulkanResource.value());
+            auto                 imguiResource = imGuiLoader(windowResource, vulkanResource.value());
 
             if (!imguiResource) {
                 throw std::runtime_error("Couldn't load imgui!");
@@ -51,11 +54,13 @@ namespace Prism::Context {
         }
     } // namespace
 
-    Context::Context() : m_contextResources{createContextResources()} {
+    Context::Context() : m_contextResources{createContextResources()}
+    {
         m_windowCloseEventConnection = m_contextResources.GetDispatcher().sink<Events::WindowCloseEvent>().connect<&Context::onWindowClose>(this);
     }
 
-    void Context::RunEngine() {
+    void Context::RunEngine()
+    {
         Systems::EventPollSystem eventPollSystem{m_contextResources};
 
         Systems::InputControlSystem inputControlSystem{m_contextResources};
@@ -76,8 +81,8 @@ namespace Prism::Context {
         if (!backpackModelOpt) {
             std::cerr << "Couldn't load backpack model!" << std::endl;
         } else {
-            auto &backpackModel = *backpackModelOpt;
-            auto backpackId = std::hash<const char *>{}("MeshResources/Backpack");
+            auto& backpackModel = *backpackModelOpt;
+            auto  backpackId    = std::hash<const char*>{}("MeshResources/Backpack");
             scene.AddNewMesh(backpackId, "Backpack", std::move(backpackModel));
 
             std::cout << "Loaded backpack model!" << std::endl;
@@ -92,28 +97,20 @@ namespace Prism::Context {
         //     scene.AddNewMesh(cubeId, "Cube", std::move(cubeModel));
         // }
 
-        eventPollSystem.Initialize();
-
-        inputControlSystem.Initialize();
-
-        sceneUpdateSystemsManager.Initialize();
-
-        sceneDrawSystemsManager.Initialize();
-
-        float deltaTime = 0.0f;
+        float deltaTime     = 0.0f;
         float lastFrameTime = 0.0f;
 
         FPSCounter fpsCounter{};
 
         // Scope for cleanup
         {
-            auto &windowResource = m_contextResources.GetWindowResource();
-            auto &vulkanResource = m_contextResources.GetVulkanResource();
+            auto& windowResource = m_contextResources.GetWindowResource();
+            auto& vulkanResource = m_contextResources.GetVulkanResource();
 
             while (m_isRunning) {
                 float currentTime = glfwGetTime();
-                deltaTime = currentTime - lastFrameTime;
-                lastFrameTime = currentTime;
+                deltaTime         = currentTime - lastFrameTime;
+                lastFrameTime     = currentTime;
 
                 inputControlSystem.Update(deltaTime);
 
@@ -130,7 +127,7 @@ namespace Prism::Context {
                 if (currentTime - fpsCounter.lastTime >= 1.0) {
                     std::string title = std::format("FPS: {}", fpsCounter.frames);
                     glfwSetWindowTitle(windowResource.GetWindow(), title.c_str());
-                    fpsCounter.frames = 0;
+                    fpsCounter.frames   = 0;
                     fpsCounter.lastTime = currentTime;
                 }
             }
@@ -139,5 +136,8 @@ namespace Prism::Context {
         }
     }
 
-    void Context::onWindowClose(Events::WindowCloseEvent &event) { m_isRunning = false; }
+    void Context::onWindowClose(Events::WindowCloseEvent& event)
+    {
+        m_isRunning = false;
+    }
 }; // namespace Prism::Context

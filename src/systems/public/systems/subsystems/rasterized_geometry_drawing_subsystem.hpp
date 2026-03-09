@@ -18,8 +18,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         RasterizedGeometryDrawingSubsystem(RasterizedGeometryDrawingSubsystem&& other)            = delete;
         RasterizedGeometryDrawingSubsystem& operator=(RasterizedGeometryDrawingSubsystem&& other) = delete;
 
-        void Initialize();
-
         void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
