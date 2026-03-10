@@ -4,12 +4,13 @@
 
 #include <glm/glm.hpp>
 
-
 #include <GLFW/glfw3.h>
 
-namespace Prism::Resources {
+namespace Prism::Resources
+{
 
-    struct CommonResource {
+    struct CommonResource
+    {
         glm::mat4 view{};
         glm::mat4 projection{};
         glm::vec4 cameraPosition{};

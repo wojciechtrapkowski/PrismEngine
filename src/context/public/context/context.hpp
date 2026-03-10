@@ -8,25 +8,27 @@
 
 #include "events/app_events.hpp"
 
-namespace Prism::Context {
-    struct Context {
+namespace Prism::Context
+{
+    struct Context
+    {
         Context();
         ~Context() = default;
 
-        Context(Context &&other) = delete;
-        Context &operator=(Context &&) = delete;
+        Context(Context&& other)      = delete;
+        Context& operator=(Context&&) = delete;
 
-        Context(Context &other) = delete;
-        Context &operator=(Context &) = delete;
+        Context(Context& other)      = delete;
+        Context& operator=(Context&) = delete;
 
         void RunEngine();
 
-      private:
-        void onWindowClose(Events::WindowCloseEvent &event);
+    private:
+        void onWindowClose(Events::WindowCloseEvent& event);
 
         Resources::ContextResources m_contextResources;
 
-        bool m_isRunning = true;
+        bool                    m_isRunning = true;
         entt::scoped_connection m_windowCloseEventConnection;
 
         entt::registry m_registry;

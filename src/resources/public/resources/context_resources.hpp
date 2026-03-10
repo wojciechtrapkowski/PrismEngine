@@ -9,32 +9,34 @@
 
 #include <entt/entt.hpp>
 
-namespace Prism::Resources {
-    struct ContextResources : ResourceImpl<ContextResources> {
-        ContextResources(Resources::WindowResource &&windowResource, Resources::VulkanResource &&vulkanResource, Resources::ImGuiResource &&imguiResource);
+namespace Prism::Resources
+{
+    struct ContextResources : ResourceImpl<ContextResources>
+    {
+        ContextResources(Resources::WindowResource&& windowResource, Resources::VulkanResource&& vulkanResource, Resources::ImGuiResource&& imguiResource);
         ~ContextResources() = default;
 
-        ContextResources(ContextResources &other) = delete;
-        ContextResources &operator=(ContextResources &other) = delete;
+        ContextResources(ContextResources& other)            = delete;
+        ContextResources& operator=(ContextResources& other) = delete;
 
-        ContextResources(ContextResources &&other) = default;
-        ContextResources &operator=(ContextResources &&other) = default;
+        ContextResources(ContextResources&& other)            = default;
+        ContextResources& operator=(ContextResources&& other) = default;
 
-        entt::dispatcher &GetDispatcher() { return dispatcher; }
+        entt::dispatcher& GetDispatcher() { return dispatcher; }
 
-        Resources::WindowResource &GetWindowResource() { return windowResource; }
+        Resources::WindowResource& GetWindowResource() { return windowResource; }
 
-        Resources::VulkanResource &GetVulkanResource() { return vulkanResource; }
+        Resources::VulkanResource& GetVulkanResource() { return vulkanResource; }
 
-        Resources::ImGuiResource &GetImGuiResource() { return imguiResource; }
+        Resources::ImGuiResource& GetImGuiResource() { return imguiResource; }
 
-        Resources::ResourceStorage &GetResourceStorage() { return resourceStorage; }
+        Resources::ResourceStorage& GetResourceStorage() { return resourceStorage; }
 
-      private:
-        entt::dispatcher dispatcher;
-        Resources::WindowResource windowResource;
-        Resources::VulkanResource vulkanResource;
-        Resources::ImGuiResource imguiResource;
+    private:
+        entt::dispatcher           dispatcher;
+        Resources::WindowResource  windowResource;
+        Resources::VulkanResource  vulkanResource;
+        Resources::ImGuiResource   imguiResource;
         Resources::ResourceStorage resourceStorage;
     };
 }; // namespace Prism::Resources

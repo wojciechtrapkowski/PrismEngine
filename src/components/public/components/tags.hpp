@@ -1,10 +1,14 @@
 #pragma once
 
-namespace Prism::Components {
-    namespace Tags {
-        struct ActiveCamera {};
+namespace Prism::Components
+{
+    namespace Tags
+    {
+        struct ActiveCamera
+        {};
 
-        struct SelectedNode {};
+        struct SelectedNode
+        {};
 
     } // namespace Tags
 } // namespace Prism::Components
