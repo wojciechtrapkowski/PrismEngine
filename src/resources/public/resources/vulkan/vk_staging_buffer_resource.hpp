@@ -30,7 +30,7 @@ namespace Prism::Resources
 
         void Copy(VkBuffer destination, void* data, size_t size, size_t offset = 0);
 
-        void CopyImmediately(VkCommandBuffer commandBuffer, Resources::VkBufferResource<>& destination, void* data, size_t size);
+        void CopyImmediately(VkCommandBuffer commandBuffer, VmaAllocation destinationAllocation, void* data, size_t size);
 
         void Commit(VkCommandBuffer commandBuffer);
 

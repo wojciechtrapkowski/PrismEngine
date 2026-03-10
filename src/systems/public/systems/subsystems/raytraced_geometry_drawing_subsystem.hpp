@@ -5,8 +5,11 @@
 #include "resources/context_resources.hpp"
 #include "resources/render_target_resource.hpp"
 #include "resources/vulkan/vk_staging_buffer_resource.hpp"
+#include "resources/vulkan/vk_acceleration_structure_resource.hpp"
 
 #include "components/transform.hpp"
+
+#include "volk/volk.h"
 
 #include <vector>
 
@@ -43,15 +46,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         VkPipelineLayout             _pipelineLayout      = VK_NULL_HANDLE;
         VkPipeline                   _pipeline            = VK_NULL_HANDLE;
 
-        std::vector<VkAccelerationStructureKHR> _blases;
-        VkAccelerationStructureKHR              _tlas;
-
-        std::vector<uint8_t>            _shaderHandles;
         VkStridedDeviceAddressRegionKHR _raygenShaderRegion{};
         VkStridedDeviceAddressRegionKHR _missShaderRegion{};
         VkStridedDeviceAddressRegionKHR _hitShaderRegion{};
         VkStridedDeviceAddressRegionKHR _callableShaderRegion{};
 
-        std::unordered_map<Resources::MeshResource::ID, std::vector<Components::Transform>> _blasToInstanceData;
+        std::unordered_map<Resources::MeshResource::ID, std::vector<entt::entity>> _blasToInstanceData;
+
+        // When recreating TLAS.
+        std::optional<Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>> _tlasInstancesBufferToDelete = std::nullopt;
+        std::optional<Resources::VkAccelerationStructureResource>                      _tlasAccelStructToDelete     = std::nullopt;
     };
 }; // namespace Prism::Systems::Subsystems::MeshDrawingSystem

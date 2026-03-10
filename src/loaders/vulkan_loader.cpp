@@ -319,6 +319,7 @@ namespace Prism::Loaders
             allocatorInfo.instance               = instance;
             allocatorInfo.vulkanApiVersion       = VK_API_VERSION_1_3;
 
+            // Unfortunately I think there is a bug in VMA function that does that, so we need to do it manaully.
             VmaVulkanFunctions vmaVulkanFunctions                  = {};
             vmaVulkanFunctions.vkGetInstanceProcAddr               = vkGetInstanceProcAddr;
             vmaVulkanFunctions.vkGetDeviceProcAddr                 = vkGetDeviceProcAddr;

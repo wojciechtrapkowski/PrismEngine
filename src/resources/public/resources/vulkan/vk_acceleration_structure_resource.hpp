@@ -25,6 +25,7 @@ namespace Prism::Resources
         VkAccelerationStructureKHR GetAccelerationStructure() const { return _accelStruct; }
 
         Resources::VkBufferResource<>& GetAccelerationStructureBuffer() { return _accelStructBuffer; }
+        Resources::VkBufferResource<>& GetScratchBuffer() { return _scratchBuffer; }
 
         void DestroyScratchBuffer();
 
