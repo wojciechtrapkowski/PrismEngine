@@ -7,27 +7,23 @@
 
 #include "events/move_events.hpp"
 
-namespace Prism::Systems {
-    namespace {
-        void createFpsCamera(entt::registry &registry,
-                             entt::entity cameraEntity) {
+namespace Prism::Systems
+{
+    namespace
+    {
+        void createFpsCamera(entt::registry& registry, entt::entity cameraEntity)
+        {
             registry.emplace<Components::FpsCameraControl>(cameraEntity);
         }
     } // namespace
 
-    CameraCreationSystem::CameraCreationSystem(
-        Resources::ContextResources &contextResources)
-        : m_contextResources(contextResources) {};
+    CameraCreationSystem::CameraCreationSystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void CameraCreationSystem::Initialize() {
-
-    };
-
-    void CameraCreationSystem::Update(float deltaTime,
-                                      Resources::Scene &scene) {
+    void CameraCreationSystem::Update(float deltaTime, Resources::Scene& scene)
+    {
         // In the future there will be more camera types.
 
-        auto &registry = scene.GetRegistry();
+        auto& registry = scene.GetRegistry();
 
         auto activeCameraView = registry.view<Components::Tags::ActiveCamera>();
         if (!activeCameraView.empty()) {

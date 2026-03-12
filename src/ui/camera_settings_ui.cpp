@@ -6,20 +6,21 @@
 #include "components/fps_camera_control.hpp"
 #include "components/tags.hpp"
 
-namespace Prism::UI {
-    CameraSettingsUI::CameraSettingsUI(Resources::ContextResources &contextResources) : m_contextResources(contextResources) {};
+namespace Prism::UI
+{
+    CameraSettingsUI::CameraSettingsUI(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void CameraSettingsUI::Update(float deltaTime, Resources::Scene &scene) {
+    void CameraSettingsUI::Update(float deltaTime, Resources::Scene& scene)
+    {
         ImGui::Begin("Camera settings");
 
-        auto &registry = scene.GetRegistry();
-        auto activeCameraView = registry.view<Components::Tags::ActiveCamera>();
+        auto& registry         = scene.GetRegistry();
+        auto  activeCameraView = registry.view<Components::Tags::ActiveCamera>();
         if (activeCameraView.empty()) {
             ImGui::End();
             return;
         }
         auto activeCameraEntity = activeCameraView.front();
-
 
         // For now, we support only FPS camera
         bool isFpsCamera = registry.all_of<Components::FpsCameraControl>(activeCameraEntity);
@@ -28,7 +29,7 @@ namespace Prism::UI {
             return;
         }
 
-        auto &fpsCameraControl = registry.get<Components::FpsCameraControl>(activeCameraEntity);
+        auto& fpsCameraControl = registry.get<Components::FpsCameraControl>(activeCameraEntity);
 
         ImGui::SliderFloat("Mouse sensitivity", &fpsCameraControl.mouseSensitivity, 0.1f, 5.0f);
         ImGui::SliderFloat("Move speed", &fpsCameraControl.moveSpeed, 1.0f, 20.0f);
@@ -36,28 +37,30 @@ namespace Prism::UI {
         ImGui::SliderFloat("Near plane", &fpsCameraControl.nearPlane, 0.01f, 1.0f);
         ImGui::SliderFloat("Far plane", &fpsCameraControl.farPlane, 10.0f, 10000.0f);
 
+        ImGui::NewLine();
+        ImGui::Separator();
+        ImGui::NewLine();
 
-        ImGui::End();
-
-        ImGui::Begin("Camera selection");
+        ImGui::BeginChild("Camera selection");
 
         std::vector<CameraType> availableCameraTypes;
 
         if (!registry.view<Components::FpsCameraControl>().empty()) {
-            availableCameraTypes.push_back({FPS_CAMERA_NAME,
-                                            [](entt::registry &registry, entt::entity e) { return registry.all_of<Components::FpsCameraControl>(e); },
-                                            [](entt::registry &registry) {
-                                                auto fpsCameraView = registry.view<Components::FpsCameraControl>();
-                                                auto fpsCameraEntity = fpsCameraView.front();
-                                                registry.emplace<Components::Tags::ActiveCamera>(fpsCameraEntity);
-                                            }});
+            availableCameraTypes.push_back(
+                {FPS_CAMERA_NAME,
+                 [](entt::registry& registry, entt::entity e) { return registry.all_of<Components::FpsCameraControl>(e); },
+                 [](entt::registry& registry) {
+                     auto fpsCameraView   = registry.view<Components::FpsCameraControl>();
+                     auto fpsCameraEntity = fpsCameraView.front();
+                     registry.emplace<Components::Tags::ActiveCamera>(fpsCameraEntity);
+                 }});
         }
 
         if (availableCameraTypes.empty()) {
             return;
         }
 
-        const char *previewValue = availableCameraTypes.front().name;
+        const char* previewValue = availableCameraTypes.front().name;
 
         if (ImGui::BeginCombo("Camera Type", previewValue)) {
             for (int i = 0; i < availableCameraTypes.size(); ++i) {
@@ -75,6 +78,8 @@ namespace Prism::UI {
             }
             ImGui::EndCombo();
         }
+
+        ImGui::EndChild();
 
         ImGui::End();
     }

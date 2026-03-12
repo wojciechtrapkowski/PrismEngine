@@ -1,7 +1,9 @@
 #include "utils/vulkan/debug_messenger.hpp"
 
-namespace Prism::Utils::Vulkan {
-    VkDebugUtilsMessengerCreateInfoEXT DebugMessenger::getCreateInfo() {
+namespace Prism::Utils::Vulkan
+{
+    VkDebugUtilsMessengerCreateInfoEXT DebugMessenger::getCreateInfo()
+    {
         VkDebugUtilsMessengerCreateInfoEXT createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         createInfo.messageSeverity =
@@ -13,7 +15,8 @@ namespace Prism::Utils::Vulkan {
         return createInfo;
     }
 
-    DebugMessenger::DebugMessenger(VkInstance instance) : instance(instance) {
+    DebugMessenger::DebugMessenger(VkInstance instance) : instance(instance)
+    {
         VkDebugUtilsMessengerCreateInfoEXT createInfo = getCreateInfo();
 
         auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -24,7 +27,8 @@ namespace Prism::Utils::Vulkan {
         }
     }
 
-    DebugMessenger::~DebugMessenger() {
+    DebugMessenger::~DebugMessenger()
+    {
         if (debugMessenger != VK_NULL_HANDLE) {
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
             if (func != nullptr) {
@@ -33,24 +37,32 @@ namespace Prism::Utils::Vulkan {
         }
     }
 
-    DebugMessenger::DebugMessenger(DebugMessenger &&other) noexcept { swap(*this, other); }
+    DebugMessenger::DebugMessenger(DebugMessenger&& other) noexcept
+    {
+        swap(*this, other);
+    }
 
-    DebugMessenger &DebugMessenger::operator=(DebugMessenger &&other) noexcept {
+    DebugMessenger& DebugMessenger::operator=(DebugMessenger&& other) noexcept
+    {
         if (this != &other) {
             swap(*this, other);
         }
         return *this;
     }
 
-    void swap(DebugMessenger &first, DebugMessenger &second) noexcept {
+    void swap(DebugMessenger& first, DebugMessenger& second) noexcept
+    {
         using std::swap;
         swap(first.instance, second.instance);
         swap(first.debugMessenger, second.debugMessenger);
     }
 
-    VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                                 VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
+    VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessenger::debugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT             messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void*                                       pUserData)
+    {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
         return VK_FALSE;
     }

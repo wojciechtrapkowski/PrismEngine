@@ -3,11 +3,12 @@
 
 #include "ui/menu_bar_ui.hpp"
 
-namespace Prism::UI {
-    MenuBarUI::MenuBarUI(Resources::ContextResources &contextResources)
-        : m_contextResources(contextResources) {}
+namespace Prism::UI
+{
+    MenuBarUI::MenuBarUI(Resources::ContextResources& contextResources) : m_contextResources(contextResources) {}
 
-    void MenuBarUI::Update(float deltaTime, Resources::Scene &scene) {
+    void MenuBarUI::Update(float deltaTime, Resources::Scene& scene)
+    {
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("File")) {
                 if (ImGui::MenuItem("Load Model")) {

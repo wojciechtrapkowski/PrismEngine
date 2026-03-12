@@ -1,0 +1,51 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+
+layout(set = 0, binding = 0) uniform CommonUniforms
+{
+    mat4 view;
+    mat4 projection;
+    vec4 cameraPosition;
+}
+commonUniforms;
+
+layout(set = 0, binding = 1) uniform accelerationStructureEXT tlas;
+layout(set = 0, binding = 2, rgba8) uniform image2D outputImage;
+
+layout(location = 0) rayPayloadEXT vec3 payload;
+
+void main()
+{
+    const ivec2 pixelCoord = ivec2(gl_LaunchIDEXT.xy);
+    const vec2  imageSize  = vec2(gl_LaunchSizeEXT.xy);
+
+    // Normalized device coords
+    vec2 clipCoords = (vec2(pixelCoord) / imageSize) * 2.0 - 1.0;
+
+    const mat4 invView       = inverse(commonUniforms.view);
+    const mat4 invProjection = inverse(commonUniforms.projection);
+
+    // Transform from NDC to view space using inverse projection matrix
+    vec4 viewCoords = invProjection * vec4(clipCoords, 1.0, 1.0);
+
+    const vec4 origin    = invView * vec4(0.0, 0.0, 0.0, 1.0);
+    const vec4 direction = invView * vec4(normalize(viewCoords.xyz), 0.0);
+
+    payload = vec3(0.0);
+
+    traceRayEXT(
+        tlas,
+        gl_RayFlagsOpaqueEXT, // rayFlags
+        0xFF,                 // cullMask
+        0,                    // sbtRecordOffset (hit group index)
+        0,                    // sbtRecordStride
+        0,                    // missIndex
+        origin.xyz,
+        0.001,                // tMin
+        direction.xyz,
+        100000.0,             // tMax
+        0                     // payload location
+    );
+
+    imageStore(outputImage, pixelCoord, vec4(payload, 1.0));
+}

@@ -3,23 +3,30 @@
 #include <stdexcept>
 #include <utility>
 
-namespace Prism::Resources {
-    VkStagingBufferResource::VkStagingBufferResource(VmaAllocator allocator) : allocator(allocator) {
+namespace Prism::Resources
+{
+    VkStagingBufferResource::VkStagingBufferResource(VmaAllocator allocator) : allocator(allocator)
+    {
         stagingBuffer =
             VkBufferResource<>(allocator, INITIAL_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
         currentlyUtilized = 0;
     }
 
-    VkStagingBufferResource::VkStagingBufferResource(VkStagingBufferResource &&other) noexcept { swap(*this, other); }
+    VkStagingBufferResource::VkStagingBufferResource(VkStagingBufferResource&& other) noexcept
+    {
+        swap(*this, other);
+    }
 
-    VkStagingBufferResource &VkStagingBufferResource::operator=(VkStagingBufferResource &&other) noexcept {
+    VkStagingBufferResource& VkStagingBufferResource::operator=(VkStagingBufferResource&& other) noexcept
+    {
         if (this != &other) {
             swap(*this, other);
         }
         return *this;
     }
 
-    void VkStagingBufferResource::Copy(VkBuffer destination, void *data, size_t size) {
+    void VkStagingBufferResource::Copy(VkBuffer destination, void* data, size_t size, size_t offset)
+    {
         if (size + currentlyUtilized > stagingBuffer.GetBufferSize()) {
             size_t newSize = std::max(stagingBuffer.GetBufferSize() * 2, static_cast<VkDeviceSize>(size + currentlyUtilized));
 
@@ -27,10 +34,10 @@ namespace Prism::Resources {
 
             // Copy old contents & replace previous buffer with the new one.
             if (currentlyUtilized > 0) {
-                void *oldData = nullptr;
+                void* oldData = nullptr;
                 vmaMapMemory(allocator, stagingBuffer.GetAllocation(), &oldData);
 
-                void *newData = nullptr;
+                void* newData = nullptr;
                 vmaMapMemory(allocator, newBuffer.GetAllocation(), &newData);
 
                 std::memcpy(newData, oldData, currentlyUtilized);
@@ -42,22 +49,32 @@ namespace Prism::Resources {
             stagingBuffer = std::move(newBuffer);
         }
 
-        void *mappedData;
+        void* mappedData;
         vmaMapMemory(allocator, stagingBuffer.GetAllocation(), &mappedData);
-        std::memcpy(static_cast<char *>(mappedData) + currentlyUtilized, data, size);
+        std::memcpy(static_cast<char*>(mappedData) + currentlyUtilized, data, size);
         vmaUnmapMemory(allocator, stagingBuffer.GetAllocation());
 
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = currentlyUtilized;
-        copyRegion.dstOffset = 0;
-        copyRegion.size = size;
+        copyRegion.dstOffset = offset;
+        copyRegion.size      = size;
 
         pendingCopies.push_back({destination, copyRegion});
 
         currentlyUtilized += size;
     }
 
-    void VkStagingBufferResource::Commit(VkCommandBuffer commandBuffer) {
+    void VkStagingBufferResource::CopyImmediately(VkCommandBuffer commandBuffer, VmaAllocation destinationAllocation, void* data, size_t size)
+    {
+        void* mappedData;
+        vmaMapMemory(allocator, destinationAllocation, &mappedData);
+        std::memcpy(static_cast<char*>(mappedData), data, size);
+        vmaUnmapMemory(allocator, destinationAllocation);
+        vmaFlushAllocation(allocator, destinationAllocation, 0, size);
+    }
+
+    void VkStagingBufferResource::Commit(VkCommandBuffer commandBuffer)
+    {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -68,7 +85,7 @@ namespace Prism::Resources {
             return;
         }
 
-        for (const auto &pending : pendingCopies) {
+        for (const auto& pending : pendingCopies) {
             vkCmdCopyBuffer(commandBuffer, stagingBuffer.GetBuffer(), pending.destination, 1, &pending.region);
         }
 
@@ -78,7 +95,8 @@ namespace Prism::Resources {
         vkEndCommandBuffer(commandBuffer);
     }
 
-    void swap(VkStagingBufferResource &first, VkStagingBufferResource &second) noexcept {
+    void swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept
+    {
         using std::swap;
         swap(first.allocator, second.allocator);
         swap(first.stagingBuffer, second.stagingBuffer);

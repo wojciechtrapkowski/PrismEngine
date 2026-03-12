@@ -28,6 +28,9 @@ add_dependencies(
         imgui
         assimp
         Prism_Resources
+        Prism_Utils
+        volk
+        VulkanMemoryAllocator
 )
 
 target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
@@ -37,7 +40,8 @@ target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
         assimp
         Prism_Resources
         Prism_Utils
-        ${Vulkan}
+        volk
+        VulkanMemoryAllocator
 )
 
 target_include_directories(${PRISM_LOADERS_LIBRARY_NAME}

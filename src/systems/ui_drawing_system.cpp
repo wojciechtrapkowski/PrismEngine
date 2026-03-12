@@ -7,20 +7,22 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
 
-#include "vulkan/vulkan.h"
+#include "volk/volk.h"
 
 #include "resources/vulkan/vk_framebuffer_resource.hpp"
 
-namespace Prism::Systems {
-    namespace {} // namespace
+namespace Prism::Systems
+{
+    namespace
+    {} // namespace
 
-    UIDrawingSystem::UIDrawingSystem(Resources::ContextResources &contextResources)
-        : m_contextResources(contextResources), m_mainDockUI{contextResources}, m_menuBarUI{contextResources}, m_sceneHierarchyUI{contextResources},
-          m_cameraSettingsUI{contextResources} {}
+    UIDrawingSystem::UIDrawingSystem(Resources::ContextResources& contextResources) :
+        m_contextResources(contextResources), m_mainDockUI{contextResources}, m_menuBarUI{contextResources}, m_sceneHierarchyUI{contextResources},
+        m_cameraSettingsUI{contextResources}, _systemsSettingsUI{contextResources}
+    {}
 
-    void UIDrawingSystem::Initialize() {}
-
-    void UIDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene &scene) {
+    void UIDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
+    {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -38,38 +40,40 @@ namespace Prism::Systems {
         m_menuBarUI.Update(deltaTime, scene);
         m_sceneHierarchyUI.Update(deltaTime, scene);
         m_cameraSettingsUI.Update(deltaTime, scene);
+        _systemsSettingsUI.Update(deltaTime, scene);
 
         vkEndCommandBuffer(commandBuffer);
     }
 
-    void UIDrawingSystem::Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene &scene, Resources::RenderTargetResource &renderTarget) {
+    void UIDrawingSystem::Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget)
+    {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
         // Get frame buffer
-        auto &vulkanResource = m_contextResources.GetVulkanResource();
-        auto &swapchainBoundStorage = vulkanResource.GetSwapchainBoundStorage();
-        auto currentImageIndex = vulkanResource.GetCurrentImageIndex();
+        auto& vulkanResource        = m_contextResources.GetVulkanResource();
+        auto& swapchainBoundStorage = vulkanResource.GetSwapchainBoundStorage();
+        auto  currentImageIndex     = vulkanResource.GetCurrentImageIndex();
 
         auto renderPass = m_contextResources.GetImGuiResource().GetRenderPass();
 
         auto framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentImageIndex);
         if (!framebufferOpt) {
-            VkDevice device = vulkanResource.GetDevice();
+            VkDevice   device = vulkanResource.GetDevice();
             VkExtent2D extent = vulkanResource.GetSwapchainExtent();
 
             VkImageView attachments[] = {renderTarget.GetColorImageView()};
 
             VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass      = renderPass;
             framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = extent.width;
-            framebufferInfo.height = extent.height;
-            framebufferInfo.layers = 1;
+            framebufferInfo.pAttachments    = attachments;
+            framebufferInfo.width           = extent.width;
+            framebufferInfo.height          = extent.height;
+            framebufferInfo.layers          = 1;
 
             VkFramebuffer framebuffer;
             if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
@@ -79,20 +83,20 @@ namespace Prism::Systems {
             auto framebufferResource = std::make_unique<Resources::VkFramebufferResource>(device, framebuffer);
 
             // Insert into ResourceStorage at frame index i
-            swapchainBoundStorage.Insert<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, std::move(framebufferResource),
-                                                                           static_cast<size_t>(currentImageIndex));
+            swapchainBoundStorage.Insert<Resources::VkFramebufferResource>(
+                FRAMEBUFFER_RESOURCE_ID, std::move(framebufferResource), static_cast<size_t>(currentImageIndex));
             framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentImageIndex);
         }
-        Resources::VkFramebufferResource &framebuffer = framebufferOpt->get();
+        Resources::VkFramebufferResource& framebuffer = framebufferOpt->get();
 
         VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = framebuffer.get();
+        renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass        = renderPass;
+        renderPassInfo.framebuffer       = framebuffer.get();
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = m_contextResources.GetVulkanResource().GetSwapchainExtent();
-        renderPassInfo.clearValueCount = 0;
-        renderPassInfo.pClearValues = nullptr;
+        renderPassInfo.clearValueCount   = 0;
+        renderPassInfo.pClearValues      = nullptr;
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 

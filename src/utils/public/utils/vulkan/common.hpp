@@ -2,10 +2,12 @@
 
 #include <optional>
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <volk/volk.h>
 
-namespace Prism::Utils::Vulkan::Common {
-    struct QueueFamilyIndices {
+namespace Prism::Utils::Vulkan::Common
+{
+    struct QueueFamilyIndices
+    {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
 
@@ -14,5 +16,5 @@ namespace Prism::Utils::Vulkan::Common {
 
     QueueFamilyIndices findQueueFamilies(VkSurfaceKHR surface, VkPhysicalDevice device);
 
-    VkShaderModule loadShaderModule(VkDevice device, const char *spvPath);
+    VkShaderModule loadShaderModule(VkDevice device, const char* spvPath);
 } // namespace Prism::Utils::Vulkan::Common

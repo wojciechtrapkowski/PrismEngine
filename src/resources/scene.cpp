@@ -5,9 +5,11 @@
 
 #include <functional>
 
-namespace Prism::Resources {
+namespace Prism::Resources
+{
 
-    std::optional<std::reference_wrapper<MeshResource>> Scene::GetMesh(Resources::MeshResource::ID resourceId) {
+    std::optional<std::reference_wrapper<MeshResource>> Scene::GetMesh(Resources::MeshResource::ID resourceId)
+    {
         auto it = m_meshes.find(resourceId);
         if (it == m_meshes.end()) {
             return std::nullopt;
@@ -16,7 +18,8 @@ namespace Prism::Resources {
         return std::ref(*(it->second));
     }
 
-    void Scene::AddNewMesh(Resources::MeshResource::ID id, std::string name, std::unique_ptr<Resources::MeshResource> meshResource) {
+    void Scene::AddNewMesh(Resources::MeshResource::ID id, std::string name, std::unique_ptr<Resources::MeshResource> meshResource)
+    {
         auto newMeshEntity = m_registry.create();
 
         m_registry.emplace<Components::Mesh>(newMeshEntity, id, name);
@@ -24,7 +27,8 @@ namespace Prism::Resources {
         m_meshes.insert({id, std::move(meshResource)});
     }
 
-    void Scene::RemoveMesh(Resources::MeshResource::ID meshId) {
+    void Scene::RemoveMesh(Resources::MeshResource::ID meshId)
+    {
         // Remove entities associated with this component
         auto meshView = m_registry.view<Components::Mesh>();
         for (auto entity : meshView) {

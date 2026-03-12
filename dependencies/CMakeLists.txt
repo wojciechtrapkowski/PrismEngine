@@ -1,8 +1,3 @@
-# Find Vulkan
-find_package(Vulkan REQUIRED)
-message(STATUS "Vulkan include dirs: ${Vulkan_INCLUDE_DIRS}")
-message(STATUS "Vulkan libraries:   ${Vulkan_LIBRARIES}")
-
 # Mac-specific configurations
 if(APPLE)
     find_library(COCOA_LIBRARY Cocoa)
@@ -31,17 +26,13 @@ set(PRISM_DEPENDENCIES
     imgui
     ImGuizmo
     ${MAC_LIBRARIES}
-    ${Vulkan_LIBRARIES}
     VulkanMemoryAllocator
     PARENT_SCOPE
 )
 
 set(PRISM_DEPENDENCIES_INCLUDE_DIRS
-    ${Vulkan_INCLUDE_DIRS}
     PARENT_SCOPE
 )
-
-set(Vulkan ${Vulkan_LIBRARIES} PARENT_SCOPE)
 
 add_subdirectory(entt)
 add_subdirectory(glfw)
@@ -50,6 +41,14 @@ add_subdirectory(glm)
 add_subdirectory(assimp)
 add_subdirectory(ImGuizmo)
 add_subdirectory(VulkanMemoryAllocator)
+add_subdirectory(volk)
+
+# To use volk.
+target_compile_definitions(VulkanMemoryAllocator
+    INTERFACE
+        VMA_STATIC_VULKAN_FUNCTIONS=0
+        VMA_DYNAMIC_VULKAN_FUNCTIONS=0
+)
 
 # Suppress warnings for VulkanMemoryAllocator target - there is a lot of them...
 if(MSVC)

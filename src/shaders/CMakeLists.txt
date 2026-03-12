@@ -38,7 +38,7 @@ macro(create_shader FILE)
     # Compile shader to SPIR-V
     add_custom_command(
         OUTPUT ${OUTPUT_SPV}
-        COMMAND ${GLSLANG_VALIDATOR} -V ${FILE} -o ${OUTPUT_SPV} 1> "${NULL_DEVICE}" # -q make it quietly, skipping stdout
+        COMMAND ${GLSLANG_VALIDATOR} -V --target-env vulkan1.2 ${FILE} -o ${OUTPUT_SPV} 1> "${NULL_DEVICE}" # -q make it quietly, skipping stdout
         DEPENDS ${FILE}
         BYPRODUCTS ${OUTPUT_SPV}    
         COMMENT "Compiling shader ${REL_PATH} -> ${OUTPUT_SPV}"
@@ -62,6 +62,12 @@ file(GLOB_RECURSE SHADER_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.frag"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.comp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.geom"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rgen"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rmiss"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rchit"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rahit"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rint"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.rcall"
 )
 
 # Create shader targets

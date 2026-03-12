@@ -7,27 +7,25 @@
 #include "resources/context_resources.hpp"
 #include "resources/scene.hpp"
 
-namespace Prism::Managers {
-    class SceneUpdateSystemsManager {
-      public:
-        SceneUpdateSystemsManager(
-            Resources::ContextResources &contextResources);
+namespace Prism::Managers
+{
+    class SceneUpdateSystemsManager
+    {
+    public:
+        SceneUpdateSystemsManager(Resources::ContextResources& contextResources);
         ~SceneUpdateSystemsManager() = default;
 
-        SceneUpdateSystemsManager(const SceneUpdateSystemsManager &) = delete;
-        SceneUpdateSystemsManager &
-        operator=(const SceneUpdateSystemsManager &) = delete;
+        SceneUpdateSystemsManager(const SceneUpdateSystemsManager&)            = delete;
+        SceneUpdateSystemsManager& operator=(const SceneUpdateSystemsManager&) = delete;
 
-        SceneUpdateSystemsManager(SceneUpdateSystemsManager &&) = delete;
-        SceneUpdateSystemsManager &
-        operator=(SceneUpdateSystemsManager &&) = delete;
+        SceneUpdateSystemsManager(SceneUpdateSystemsManager&&)            = delete;
+        SceneUpdateSystemsManager& operator=(SceneUpdateSystemsManager&&) = delete;
 
-        void Initialize();
-        void Update(float deltaTime, Resources::Scene &scene);
+        void Update(float deltaTime, Resources::Scene& scene);
 
-      private:
-        Systems::CameraCreationSystem cameraCreationSystem;
-        Systems::FpsMotionControlSystem fpsMotionControlSystem;
+    private:
+        Systems::CameraCreationSystem      cameraCreationSystem;
+        Systems::FpsMotionControlSystem    fpsMotionControlSystem;
         Systems::CommonUniformUpdateSystem commonUniformUpdateSystem;
     };
 } // namespace Prism::Managers

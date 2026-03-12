@@ -7,21 +7,19 @@
 #include "components/tags.hpp"
 #include "components/transform.hpp"
 
-namespace Prism::UI {
-    namespace {
-        void renderTransformComponent(entt::registry &registry,
-                                      entt::entity entity) {
+namespace Prism::UI
+{
+    namespace
+    {
+        void renderTransformComponent(entt::registry& registry, entt::entity entity)
+        {
             if (!registry.all_of<Components::Transform>(entity))
                 return;
 
             if (ImGui::TreeNode("Transform")) {
-                auto &transform =
-                    registry.get<Components::Transform>(entity).transform;
+                auto& transform = registry.get<Components::Transform>(entity).transform;
 
-                if (ImGui::BeginTable("TransformMatrix", 4,
-                                      ImGuiTableFlags_Borders |
-                                          ImGuiTableFlags_RowBg)) {
-
+                if (ImGui::BeginTable("TransformMatrix", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
                     ImGui::TableSetupColumn("X");
                     ImGui::TableSetupColumn("Y");
                     ImGui::TableSetupColumn("Z");
@@ -32,11 +30,8 @@ namespace Prism::UI {
                         ImGui::TableNextRow();
                         for (int col = 0; col < 4; ++col) {
                             ImGui::TableSetColumnIndex(col);
-                            std::string label = "##M_" + std::to_string(row) +
-                                                "_" + std::to_string(col);
-                            ImGui::InputFloat(label.c_str(),
-                                              &transform[row][col], 0.1f, 1.0f,
-                                              "%.3f");
+                            std::string label = "##M_" + std::to_string(row) + "_" + std::to_string(col);
+                            ImGui::InputFloat(label.c_str(), &transform[row][col], 0.1f, 1.0f, "%.3f");
                         }
                     }
 
@@ -46,35 +41,26 @@ namespace Prism::UI {
             }
         }
 
-        void renderMeshNode(entt::registry &registry,
-                            const entt::entity &meshNodeEntity) {
+        void renderMeshNode(entt::registry& registry, const entt::entity& meshNodeEntity)
+        {
+            auto& meshComponent = registry.get<Components::Mesh>(meshNodeEntity);
 
-            auto &meshComponent =
-                registry.get<Components::Mesh>(meshNodeEntity);
+            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen;
 
-            ImGuiTreeNodeFlags nodeFlags =
-                ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen;
-
-            if (registry.all_of<Components::Tags::SelectedNode>(
-                    meshNodeEntity)) {
+            if (registry.all_of<Components::Tags::SelectedNode>(meshNodeEntity)) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
 
-            bool isOpened =
-                ImGui::TreeNodeEx((void *)(intptr_t)meshNodeEntity, nodeFlags,
-                                  "%s", meshComponent.name.c_str());
+            bool isOpened = ImGui::TreeNodeEx((void*)(intptr_t)meshNodeEntity, nodeFlags, "%s", meshComponent.name.c_str());
 
             if (ImGui::IsItemClicked()) {
-                auto selectedNodeView =
-                    registry.view<Components::Tags::SelectedNode>();
+                auto selectedNodeView = registry.view<Components::Tags::SelectedNode>();
                 if (!selectedNodeView.empty()) {
                     auto selectedNodeEntity = selectedNodeView.front();
-                    registry.remove<Components::Tags::SelectedNode>(
-                        selectedNodeEntity);
+                    registry.remove<Components::Tags::SelectedNode>(selectedNodeEntity);
                 }
 
-                registry.emplace<Components::Tags::SelectedNode>(
-                    meshNodeEntity);
+                registry.emplace<Components::Tags::SelectedNode>(meshNodeEntity);
             }
 
             if (isOpened) {
@@ -87,16 +73,15 @@ namespace Prism::UI {
         }
     } // namespace
 
-    SceneHierarchyUI::SceneHierarchyUI(
-        Resources::ContextResources &contextResources)
-        : m_contextResources(contextResources) {};
+    SceneHierarchyUI::SceneHierarchyUI(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void SceneHierarchyUI::Update(float deltaTime, Resources::Scene &scene) {
+    void SceneHierarchyUI::Update(float deltaTime, Resources::Scene& scene)
+    {
         ImGui::Begin("Scene Hierarchy");
 
-        auto &registry = scene.GetRegistry();
-        auto meshView = registry.view<Components::Mesh>();
-        for (const auto &meshEntity : meshView) {
+        auto& registry = scene.GetRegistry();
+        auto  meshView = registry.view<Components::Mesh>();
+        for (const auto& meshEntity : meshView) {
             renderMeshNode(registry, meshEntity);
         }
 

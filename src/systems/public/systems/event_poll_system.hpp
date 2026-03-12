@@ -1,27 +1,26 @@
 #pragma once
 
-
 #include <GLFW/glfw3.h>
 
 #include "resources/context_resources.hpp"
 
-namespace Prism::Systems {
-    class EventPollSystem {
-      public:
-        EventPollSystem(Resources::ContextResources &contextResources);
+namespace Prism::Systems
+{
+    class EventPollSystem
+    {
+    public:
+        EventPollSystem(Resources::ContextResources& contextResources);
         ~EventPollSystem() = default;
 
-        EventPollSystem(EventPollSystem &other) = delete;
-        EventPollSystem &operator=(EventPollSystem &other) = delete;
+        EventPollSystem(EventPollSystem& other)            = delete;
+        EventPollSystem& operator=(EventPollSystem& other) = delete;
 
-        EventPollSystem(EventPollSystem &&other) = delete;
-        EventPollSystem &operator=(EventPollSystem &&other) = delete;
-
-        void Initialize();
+        EventPollSystem(EventPollSystem&& other)            = delete;
+        EventPollSystem& operator=(EventPollSystem&& other) = delete;
 
         void Update(float deltaTime);
 
-      private:
-        Resources::ContextResources &m_contextResources;
+    private:
+        Resources::ContextResources& m_contextResources;
     };
 }; // namespace Prism::Systems

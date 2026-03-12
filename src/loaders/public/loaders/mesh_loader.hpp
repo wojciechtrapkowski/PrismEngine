@@ -8,19 +8,21 @@
 #include <string>
 #include <utility>
 
-namespace Prism::Loaders {
-    struct MeshLoader {
+namespace Prism::Loaders
+{
+    struct MeshLoader
+    {
         using result_type = std::optional<std::unique_ptr<Resources::MeshResource>>;
 
-        MeshLoader() = default;
+        MeshLoader()  = default;
         ~MeshLoader() = default;
 
-        MeshLoader(MeshLoader &&other) = default;
-        MeshLoader &operator=(MeshLoader &&) = default;
+        MeshLoader(MeshLoader&& other)      = default;
+        MeshLoader& operator=(MeshLoader&&) = default;
 
-        MeshLoader(MeshLoader &other) = delete;
-        MeshLoader &operator=(MeshLoader &) = delete;
+        MeshLoader(MeshLoader& other)      = delete;
+        MeshLoader& operator=(MeshLoader&) = delete;
 
-        result_type operator()(Resources::VulkanResource &vulkanResource, Resources::VkStagingBufferResource &stagingBuffer, const std::string &path) const;
+        result_type operator()(Resources::VulkanResource& vulkanResource, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const;
     };
 }; // namespace Prism::Loaders

@@ -2,10 +2,13 @@
 
 #include <utility>
 
-namespace Prism::Events {
-    struct WindowCloseEvent {};
+namespace Prism::Events
+{
+    struct WindowCloseEvent
+    {};
 
-    struct WindowResizeEvent {
+    struct WindowResizeEvent
+    {
         int newWidth;
         int newHeight;
     };

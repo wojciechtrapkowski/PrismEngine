@@ -9,7 +9,6 @@ set(IMGUI_SOURCES
     )
 
 set(IMGUI_BACKEND_SOURCES
-    "${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
 )
@@ -20,14 +19,12 @@ target_include_directories(imgui
     PUBLIC
         ${IMGUI_DIR}
         ${IMGUI_DIR}/backends
-        ${Vulkan_INCLUDE_DIRS}
 )
 
 # Link with OpenGL and GLFW
 target_link_libraries(imgui
     PUBLIC
-        ${OPENGL_LIBRARIES}
-        ${Vulkan}
+        volk
 )
 
 # If using GLFW as a target
@@ -42,5 +39,5 @@ endif()
 # Set compile definitions for the backend
 target_compile_definitions(imgui
     PUBLIC
-        IMGUI_IMPL_OPENGL_LOADER_GLAD
+        IMGUI_IMPL_VULKAN_USE_VOLK 
 )

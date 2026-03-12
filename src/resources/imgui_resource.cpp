@@ -6,11 +6,14 @@
 
 #include <iostream>
 
-namespace Prism::Resources {
-    ImGuiResource::ImGuiResource(VkDevice device, VkDescriptorPool descriptorPool, VkRenderPass renderPass)
-        : isOwned(true), device(device), descriptorPool(descriptorPool), renderPass(renderPass) {}
+namespace Prism::Resources
+{
+    ImGuiResource::ImGuiResource(VkDevice device, VkDescriptorPool descriptorPool, VkRenderPass renderPass) :
+        isOwned(true), device(device), descriptorPool(descriptorPool), renderPass(renderPass)
+    {}
 
-    ImGuiResource::~ImGuiResource() {
+    ImGuiResource::~ImGuiResource()
+    {
         if (isOwned) {
             std::cout << "Shutting down imgui!" << std::endl;
 
@@ -28,16 +31,21 @@ namespace Prism::Resources {
         }
     }
 
-    ImGuiResource::ImGuiResource(ImGuiResource &&other) noexcept { swap(*this, other); }
+    ImGuiResource::ImGuiResource(ImGuiResource&& other) noexcept
+    {
+        swap(*this, other);
+    }
 
-    ImGuiResource &ImGuiResource::operator=(ImGuiResource &&other) noexcept {
+    ImGuiResource& ImGuiResource::operator=(ImGuiResource&& other) noexcept
+    {
         if (this != &other) {
             swap(*this, other);
         }
         return *this;
     }
 
-    void swap(ImGuiResource &first, ImGuiResource &second) noexcept {
+    void swap(ImGuiResource& first, ImGuiResource& second) noexcept
+    {
         using std::swap;
 
         swap(first.isOwned, second.isOwned);
