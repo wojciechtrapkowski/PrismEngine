@@ -16,6 +16,7 @@ set(SYSTEMS_SOURCES
     gizmo_drawing_system.cpp
     window_resize_system.cpp
     mesh_drawing_system.cpp
+    frame_swap_system.cpp
     
     subsystems/rasterized_geometry_drawing_subsystem.cpp
     subsystems/raytraced_geometry_drawing_system.cpp
@@ -33,6 +34,7 @@ set(SYSTEMS_HEADERS
     public/systems/gizmo_drawing_system.hpp
     public/systems/window_resize_system.hpp
     public/systems/mesh_drawing_system.hpp
+    public/systems/frame_swap_system.hpp
 
     public/systems/subsystems/rasterized_geometry_drawing_subsystem.hpp
     public/systems/subsystems/raytraced_geometry_drawing_subsystem.hpp

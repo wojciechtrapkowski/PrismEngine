@@ -10,8 +10,8 @@ namespace Prism::Loaders
 {
     namespace /* anonymous */
     {
-        const int SCR_WIDTH  = 1200;
-        const int SCR_HEIGHT = 600;
+        const int SCR_WIDTH  = 1600;
+        const int SCR_HEIGHT = 800;
     } // namespace
 
     WindowLoader::result_type WindowLoader::operator()() const

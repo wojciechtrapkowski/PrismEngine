@@ -26,11 +26,11 @@ namespace Prism::Context
     private:
         void onWindowClose(Events::WindowCloseEvent& event);
 
-        Resources::ContextResources m_contextResources;
+        Resources::ContextResources _contextResources;
 
-        bool                    m_isRunning = true;
-        entt::scoped_connection m_windowCloseEventConnection;
+        bool                    _isRunning = true;
+        entt::scoped_connection _windowCloseEventConnection;
 
-        entt::registry m_registry;
+        entt::registry _registry;
     };
 }; // namespace Prism::Context

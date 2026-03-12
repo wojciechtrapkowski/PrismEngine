@@ -37,9 +37,11 @@ namespace Prism::UI
         ImGui::SliderFloat("Near plane", &fpsCameraControl.nearPlane, 0.01f, 1.0f);
         ImGui::SliderFloat("Far plane", &fpsCameraControl.farPlane, 10.0f, 10000.0f);
 
-        ImGui::End();
+        ImGui::NewLine();
+        ImGui::Separator();
+        ImGui::NewLine();
 
-        ImGui::Begin("Camera selection");
+        ImGui::BeginChild("Camera selection");
 
         std::vector<CameraType> availableCameraTypes;
 
@@ -76,6 +78,8 @@ namespace Prism::UI
             }
             ImGui::EndCombo();
         }
+
+        ImGui::EndChild();
 
         ImGui::End();
     }

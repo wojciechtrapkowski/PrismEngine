@@ -214,11 +214,11 @@ namespace Prism::Resources
 
     void VulkanResource::AdvanceFrame()
     {
+        currentFrameOffset = (currentFrameOffset + 1) % FRAMES_IN_FLIGHT;
+
         vkWaitForFences(device, 1, &fences[currentFrameOffset], true, UINT64_MAX);
         vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAcquiredSemaphores[currentFrameOffset], VK_NULL_HANDLE, &currentImageIndex);
         vkResetFences(device, 1, &fences[currentFrameOffset]);
-
-        currentFrameOffset = (currentFrameOffset + 1) % FRAMES_IN_FLIGHT;
     }
 
     void VulkanResource::cleanupSwapchain()

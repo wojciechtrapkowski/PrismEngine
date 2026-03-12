@@ -5,13 +5,7 @@
 #include "loaders/vulkan_loader.hpp"
 #include "loaders/window_loader.hpp"
 
-#include "systems/camera_creation_system.hpp"
-#include "systems/common_uniform_update_system.hpp"
-#include "systems/event_poll_system.hpp"
-#include "systems/fps_motion_control_system.hpp"
-#include "systems/input_control_system.hpp"
-#include "systems/window_resize_system.hpp"
-
+#include "managers/context_update_systems_manager.hpp"
 #include "managers/scene_draw_systems_manager.hpp"
 #include "managers/scene_update_systems_manager.hpp"
 
@@ -54,30 +48,26 @@ namespace Prism::Context
         }
     } // namespace
 
-    Context::Context() : m_contextResources{createContextResources()}
+    Context::Context() : _contextResources{createContextResources()}
     {
-        m_windowCloseEventConnection = m_contextResources.GetDispatcher().sink<Events::WindowCloseEvent>().connect<&Context::onWindowClose>(this);
+        _windowCloseEventConnection = _contextResources.GetDispatcher().sink<Events::WindowCloseEvent>().connect<&Context::onWindowClose>(this);
     }
 
     void Context::RunEngine()
     {
-        Systems::EventPollSystem eventPollSystem{m_contextResources};
+        Managers::ContextUpdateSystemsManager contextUpdateSystemsManager{_contextResources};
 
-        Systems::InputControlSystem inputControlSystem{m_contextResources};
+        Managers::SceneDrawSystemsManager sceneDrawSystemsManager{_contextResources};
 
-        Systems::WindowResizeSystem windowResizeSystem{m_contextResources};
-
-        Managers::SceneDrawSystemsManager sceneDrawSystemsManager{m_contextResources};
-
-        Managers::SceneUpdateSystemsManager sceneUpdateSystemsManager{m_contextResources};
+        Managers::SceneUpdateSystemsManager sceneUpdateSystemsManager{_contextResources};
 
         Resources::Scene scene{};
 
         Loaders::MeshLoader meshLoader{};
 
-        Resources::VkStagingBufferResource stagingBuffer{m_contextResources.GetVulkanResource().GetVmaAllocator()};
+        Resources::VkStagingBufferResource stagingBuffer{_contextResources.GetVulkanResource().GetVmaAllocator()};
 
-        auto backpackModelOpt = meshLoader(m_contextResources.GetVulkanResource(), stagingBuffer, "backpack.obj");
+        auto backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "backpack.obj");
         if (!backpackModelOpt) {
             std::cerr << "Couldn't load backpack model!" << std::endl;
         } else {
@@ -104,19 +94,15 @@ namespace Prism::Context
 
         // Scope for cleanup
         {
-            auto& windowResource = m_contextResources.GetWindowResource();
-            auto& vulkanResource = m_contextResources.GetVulkanResource();
+            auto& windowResource = _contextResources.GetWindowResource();
+            auto& vulkanResource = _contextResources.GetVulkanResource();
 
-            while (m_isRunning) {
+            while (_isRunning) {
                 float currentTime = glfwGetTime();
                 deltaTime         = currentTime - lastFrameTime;
                 lastFrameTime     = currentTime;
 
-                inputControlSystem.Update(deltaTime);
-
-                eventPollSystem.Update(deltaTime);
-
-                windowResizeSystem.Update(deltaTime);
+                contextUpdateSystemsManager.Update(deltaTime);
 
                 sceneUpdateSystemsManager.Update(deltaTime, scene);
 
@@ -132,12 +118,12 @@ namespace Prism::Context
                 }
             }
 
-            vkDeviceWaitIdle(m_contextResources.GetVulkanResource().GetDevice());
+            vkDeviceWaitIdle(_contextResources.GetVulkanResource().GetDevice());
         }
     }
 
     void Context::onWindowClose(Events::WindowCloseEvent& event)
     {
-        m_isRunning = false;
+        _isRunning = false;
     }
 }; // namespace Prism::Context

@@ -6,11 +6,13 @@ set(PRISM_MANAGERS_LIBRARY_NAME Prism_Managers)
 set(MANAGERS_HEADERS
     public/managers/scene_draw_systems_manager.hpp
     public/managers/scene_update_systems_manager.hpp
+    public/managers/context_update_systems_manager.hpp
 )
 
 set(MANAGERS_SOURCES
     scene_draw_systems_manager.cpp
     scene_update_systems_manager.cpp
+    context_update_systems_manager.cpp
 )
 
 add_library(${PRISM_MANAGERS_LIBRARY_NAME} STATIC

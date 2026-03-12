@@ -126,9 +126,10 @@ namespace Prism::Resources
         std::vector<VkFence>     fences                  = {};
         std::vector<VkSemaphore> imageAcquiredSemaphores = {};
 
-        uint32_t imageCount         = 0;
-        uint32_t currentImageIndex  = 0;
-        int32_t  currentFrameOffset = 0;
+        uint32_t imageCount        = 0;
+        uint32_t currentImageIndex = 0;
+        // Small hack in order to set up correct index - 0 for the first frame.
+        int32_t currentFrameOffset = -1;
 
         uint32_t graphicsQueueFamilyIndex     = 0;
         uint32_t presentationQueueFamilyIndex = 0;

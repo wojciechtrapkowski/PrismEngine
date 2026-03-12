@@ -72,9 +72,6 @@ namespace Prism::Managers
         auto  imageAcquiredSemaphore     = vulkanResource.GetCurrentImageAcquiredSemaphore();
         auto  currentFence               = vulkanResource.GetCurrentFence();
 
-        // This could be probably moved to frame swap system.
-        vulkanResource.AdvanceFrame();
-
         currentCommandPoolResource.Reset();
 
         auto renderTargetOpt =

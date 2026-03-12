@@ -425,6 +425,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
 
+            // I don't think this scratch buffer should be in the resource. We could make a vector in the system to hold all of the scratch buffers that can be
+            // deleted in the next frame. Or just run over all of our BLASes and run DestroyScratchBuffer() on them.
             return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
         }
 
@@ -472,19 +474,27 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             vkGetAccelerationStructureBuildSizesKHR(
                 vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &buildSize);
 
-            Resources::VkBufferResource<> scratchBuffer{
-                vulkan.GetVmaAllocator(),
-                buildSize.updateScratchSize,
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
-                accelProps.minAccelerationStructureScratchOffsetAlignment};
+            if (buildSize.updateScratchSize > outPreviousTLAS.GetScratchBuffer().GetBufferSize()) {
+#ifdef DEBUG
+                // I'm just curious if this is even possible.
+                std::cout << "Reallocating TLAS scratch buffer: old size = " << outPreviousTLAS.GetScratchBuffer().GetBufferSize()
+                          << " bytes, new size = " << buildSize.updateScratchSize << " bytes\n";
+#endif
+                outPreviousTLAS.GetScratchBuffer() = {}; // Destroy old scratch buffer if it's too small
 
-            accelBuildInfo.scratchData.deviceAddress = scratchBuffer.GetBufferDeviceAddress();
+                Resources::VkBufferResource<> scratchBuffer{
+                    vulkan.GetVmaAllocator(),
+                    buildSize.updateScratchSize,
+                    VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                    accelProps.minAccelerationStructureScratchOffsetAlignment};
+
+                outPreviousTLAS.GetScratchBuffer() = std::move(scratchBuffer);
+            }
+            accelBuildInfo.scratchData.deviceAddress = outPreviousTLAS.GetScratchBuffer().GetBufferDeviceAddress();
 
             VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelBuildRangeInfo;
 
             vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
-
-            outPreviousTLAS.GetScratchBuffer() = std::move(scratchBuffer);
         }
     } // namespace
 
@@ -618,8 +628,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             // For compiler.
             return true;
         }();
-
-        // Recreate TLAS scene every frame.
 
         auto tlasCreationBlock = [&]() {
             std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
