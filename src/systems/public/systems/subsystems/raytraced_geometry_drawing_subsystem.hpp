@@ -33,10 +33,16 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
     private:
         inline static const Resources::Resource::ID SBT_BUFFER_ID = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/SBTBufferId");
+
         inline static const Resources::Resource::ID TLAS_INSTANCES_BUFFER_ID =
             std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASInstancesBufferId");
-        inline static const Resources::Resource::ID TLAS_ACCEL_STRUCT_BUFFER_ID =
-            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASAccelStructBufferId");
+        inline static const Resources::Resource::ID TLAS_ACCEL_STRUCT_ID = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASAccelStructId");
+        inline static const Resources::Resource::ID TLAS_SCRATCH_BUFFER_ID =
+            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/TLASScratchBufferId");
+
+        inline static const Resources::Resource::ID MESH_BLAS_ID_PREFIX = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/MeshBlasIdPrefix");
+        inline static const Resources::Resource::ID MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX =
+            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/MeshBlasScratchBufferIdPrefix");
 
         Resources::ContextResources& _contextResources;
 

@@ -9,11 +9,7 @@ namespace Prism::Resources
 {
     struct VkAccelerationStructureResource : ResourceImpl<VkAccelerationStructureResource>
     {
-        VkAccelerationStructureResource(
-            VkDevice                      device,
-            Resources::VkBufferResource<> accelStructBuffer,
-            Resources::VkBufferResource<> scratchBuffer,
-            VkAccelerationStructureKHR    accelStruct);
+        VkAccelerationStructureResource(VkDevice device, Resources::VkBufferResource<> accelStructBuffer, VkAccelerationStructureKHR accelStruct);
         ~VkAccelerationStructureResource();
 
         VkAccelerationStructureResource(VkAccelerationStructureResource& other)            = delete;
@@ -25,17 +21,13 @@ namespace Prism::Resources
         VkAccelerationStructureKHR GetAccelerationStructure() const { return _accelStruct; }
 
         Resources::VkBufferResource<>& GetAccelerationStructureBuffer() { return _accelStructBuffer; }
-        Resources::VkBufferResource<>& GetScratchBuffer() { return _scratchBuffer; }
-
-        void DestroyScratchBuffer();
 
     private:
         friend void swap(VkAccelerationStructureResource& lhs, VkAccelerationStructureResource& rhs) noexcept;
 
-        VkDevice                   _device      = {};
-        VkAccelerationStructureKHR _accelStruct = VK_NULL_HANDLE;
+        VkDevice _device = {};
 
+        VkAccelerationStructureKHR    _accelStruct       = VK_NULL_HANDLE;
         Resources::VkBufferResource<> _accelStructBuffer = {};
-        Resources::VkBufferResource<> _scratchBuffer     = {};
     };
 } // namespace Prism::Resources

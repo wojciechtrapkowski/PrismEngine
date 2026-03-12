@@ -30,6 +30,7 @@ namespace Prism::Resources
             if (index >= storedResources.size()) {
                 storedResources.resize(index + 1);
             }
+            resource->SetID(id);
             storedResources[index] = std::move(resource);
         }
 

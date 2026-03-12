@@ -36,9 +36,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
-        constexpr auto getMeshBLASId = [](Resources::MeshResource::ID id) {
-            return std::hash<std::string_view>{}(std::format("RaytracedGeometryDrawingSubsystem/BLAS/{}", id));
-        };
 
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {
@@ -258,9 +255,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
         };
 
-        Resources::VkAccelerationStructureResource
-        createBLASFromMesh(Resources::VulkanResource& vulkan, VkCommandBuffer commandBuffer, Resources::MeshResource& mesh)
+        Resources::VkAccelerationStructureResource createBLASFromMesh(
+            Resources::ContextResources& contextResources,
+            VkCommandBuffer              commandBuffer,
+            Resources::MeshResource&     mesh,
+            Resources::Resource::ID      scratchBufferId)
         {
+            auto& vulkan                   = contextResources.GetVulkanResource();
+            auto& temporaryResourceStorage = contextResources.GetTemporaryResourceStorage();
+
             VkAccelerationStructureKHR accelStruct{};
 
             // Prepare geometry
@@ -345,15 +348,23 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
 
-            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
+            auto meshId = mesh.GetID();
+
+            temporaryResourceStorage.Insert(scratchBufferId, std::make_unique<Resources::VkBufferResource<>>(std::move(scratchBuffer)));
+
+            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(accelStruct)};
         }
 
         Resources::VkAccelerationStructureResource createTLAS(
-            Resources::VulkanResource&                                       vulkan,
+            Resources::ContextResources&                                     contextResources,
             VkCommandBuffer                                                  commandBuffer,
             Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>& tlasInstancesBuffer,
-            std::vector<VkAccelerationStructureInstanceKHR>&                 instances)
+            std::vector<VkAccelerationStructureInstanceKHR>&                 instances,
+            Resources::Resource::ID                                          scratchBufferId)
         {
+            auto& vulkan          = contextResources.GetVulkanResource();
+            auto& resourceStorage = contextResources.GetResourceStorage();
+
             VkAccelerationStructureGeometryInstancesDataKHR geometryInstances{
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
                 .data  = {.deviceAddress = tlasInstancesBuffer.GetBufferDeviceAddress()}};
@@ -425,17 +436,22 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             vkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelBuildInfo, &pBuildRangeInfo);
 
-            // I don't think this scratch buffer should be in the resource. We could make a vector in the system to hold all of the scratch buffers that can be
-            // deleted in the next frame. Or just run over all of our BLASes and run DestroyScratchBuffer() on them.
-            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(scratchBuffer), std::move(accelStruct)};
+            // This will be reused for refitting the TLAS.
+            resourceStorage.Insert(scratchBufferId, std::make_unique<Resources::VkBufferResource<>>(std::move(scratchBuffer)));
+
+            return {vulkan.GetDevice(), std::move(accelerationStructureBuffer), std::move(accelStruct)};
         }
 
         void refitTLAS(
-            Resources::VulkanResource&                                       vulkan,
+            Resources::ContextResources&                                     contextResources,
             VkCommandBuffer                                                  commandBuffer,
             Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>& tlasInstancesBuffer,
-            Resources::VkAccelerationStructureResource&                      outPreviousTLAS)
+            Resources::VkAccelerationStructureResource&                      outPreviousTLAS,
+            Resources::Resource::ID                                          scratchBufferId)
         {
+            auto& vulkan          = contextResources.GetVulkanResource();
+            auto& resourceStorage = contextResources.GetResourceStorage();
+
             VkAccelerationStructureGeometryInstancesDataKHR geometryInstances{
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
                 .data  = {.deviceAddress = tlasInstancesBuffer.GetBufferDeviceAddress()}};
@@ -474,23 +490,34 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             vkGetAccelerationStructureBuildSizesKHR(
                 vulkan.GetDevice(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelBuildInfo, maxPrimCount.data(), &buildSize);
 
-            if (buildSize.updateScratchSize > outPreviousTLAS.GetScratchBuffer().GetBufferSize()) {
+            bool needsNewScratchBuffer = false;
+
+            auto scratchBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(scratchBufferId);
+            if (!scratchBufferOpt) {
+                needsNewScratchBuffer |= true;
+            } else if (buildSize.updateScratchSize > scratchBufferOpt->get().GetBufferSize()) {
+                needsNewScratchBuffer |= true;
+            }
+
+            if (needsNewScratchBuffer) {
 #ifdef DEBUG
                 // I'm just curious if this is even possible.
-                std::cout << "Reallocating TLAS scratch buffer: old size = " << outPreviousTLAS.GetScratchBuffer().GetBufferSize()
+                std::cout << "Reallocating TLAS scratch buffer: old size = " << scratchBufferOpt->get().GetBufferSize()
                           << " bytes, new size = " << buildSize.updateScratchSize << " bytes\n";
 #endif
-                outPreviousTLAS.GetScratchBuffer() = {}; // Destroy old scratch buffer if it's too small
-
                 Resources::VkBufferResource<> scratchBuffer{
                     vulkan.GetVmaAllocator(),
                     buildSize.updateScratchSize,
                     VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
                     accelProps.minAccelerationStructureScratchOffsetAlignment};
 
-                outPreviousTLAS.GetScratchBuffer() = std::move(scratchBuffer);
+                resourceStorage.Delete(scratchBufferId);
+
+                resourceStorage.Insert(scratchBufferId, std::make_unique<Resources::VkBufferResource<>>(std::move(scratchBuffer)));
             }
-            accelBuildInfo.scratchData.deviceAddress = outPreviousTLAS.GetScratchBuffer().GetBufferDeviceAddress();
+            auto& scratchBuffer = resourceStorage.Get<Resources::VkBufferResource<>>(scratchBufferId)->get();
+
+            accelBuildInfo.scratchData.deviceAddress = scratchBuffer.GetBufferDeviceAddress();
 
             VkAccelerationStructureBuildRangeInfoKHR* pBuildRangeInfo = &accelBuildRangeInfo;
 
@@ -602,8 +629,9 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             auto meshView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
 
             for (auto [meshEntity, meshComponent, transformComponent] : meshView.each()) {
-                auto& meshResourceId     = meshComponent.resourceId;
-                auto  blasMeshResourceId = getMeshBLASId(meshResourceId);
+                auto& meshResourceId      = meshComponent.resourceId;
+                auto  blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
+                auto  blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
 
                 auto meshOpt = scene.GetMesh(meshResourceId);
                 if (!meshOpt) {
@@ -613,7 +641,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
                 auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!accelStructureResourceOpt) {
-                    auto accel = createBLASFromMesh(_contextResources.GetVulkanResource(), commandBuffer, mesh);
+                    auto accel = createBLASFromMesh(_contextResources, commandBuffer, mesh, blasScratchBufferId);
 
                     resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
                         blasMeshResourceId, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(accel)));
@@ -687,7 +715,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
                     _tlasInstancesBufferToDelete = std::move(tlasInstancesBuffer);
 
-                    auto tlasAccelStructOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_BUFFER_ID);
+                    auto tlasAccelStructOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_ID);
                     if (tlasAccelStructOpt) {
                         auto& tlasAccelStruct = tlasAccelStructOpt->get();
 
@@ -695,7 +723,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     }
 
                     resourceStorage.Delete(TLAS_INSTANCES_BUFFER_ID);
-                    resourceStorage.Delete(TLAS_ACCEL_STRUCT_BUFFER_ID);
+                    resourceStorage.Delete(TLAS_ACCEL_STRUCT_ID);
                 }
             }
 
@@ -714,10 +742,11 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     tlasInstances.data(),
                     sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
 
-                auto tlasAccelStruct = createTLAS(_contextResources.GetVulkanResource(), commandBuffer, tlasInstancesBuffer, tlasInstances);
+                auto tlasAccelStruct =
+                    createTLAS(_contextResources, commandBuffer, tlasInstancesBuffer, tlasInstances, TLAS_SCRATCH_BUFFER_ID);
 
                 resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
-                    TLAS_ACCEL_STRUCT_BUFFER_ID, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(tlasAccelStruct)));
+                    TLAS_ACCEL_STRUCT_ID, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(tlasAccelStruct)));
 
                 resourceStorage.Insert<Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>>(
                     TLAS_INSTANCES_BUFFER_ID,
@@ -732,9 +761,9 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     tlasInstances.data(),
                     sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
 
-                auto& previousTLAS = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_BUFFER_ID)->get();
+                auto& previousTLAS = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_ID)->get();
 
-                refitTLAS(_contextResources.GetVulkanResource(), commandBuffer, tlasInstancesBuffer, previousTLAS);
+                refitTLAS(_contextResources, commandBuffer, tlasInstancesBuffer, previousTLAS, TLAS_SCRATCH_BUFFER_ID);
             }
 
             // For compiler.
@@ -756,7 +785,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
         auto& commonUniformBuffer = commonUniformBufferOpt->get();
 
-        auto tlasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_BUFFER_ID);
+        auto tlasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_ID);
         if (!tlasOpt) {
             return;
         }
