@@ -4,6 +4,7 @@
 #include "components/fps_camera_control.hpp"
 #include "components/tags.hpp"
 #include "components/transform.hpp"
+#include "components/name.hpp"
 
 #include "events/move_events.hpp"
 
@@ -34,6 +35,7 @@ namespace Prism::Systems
         registry.emplace<Components::Tags::ActiveCamera>(cameraEntity);
         registry.emplace<Components::Camera>(cameraEntity);
         registry.emplace<Components::Transform>(cameraEntity);
+        registry.emplace<Components::Name>(cameraEntity, "Camera");
 
         createFpsCamera(registry, cameraEntity);
     };

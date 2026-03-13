@@ -2,6 +2,7 @@
 
 #include "components/mesh.hpp"
 #include "components/transform.hpp"
+#include "components/name.hpp"
 
 #include <functional>
 
@@ -22,7 +23,8 @@ namespace Prism::Resources
     {
         auto newMeshEntity = m_registry.create();
 
-        m_registry.emplace<Components::Mesh>(newMeshEntity, id, name);
+        m_registry.emplace<Components::Name>(newMeshEntity, name);
+        m_registry.emplace<Components::Mesh>(newMeshEntity, id);
         m_registry.emplace<Components::Transform>(newMeshEntity, glm::mat4(1.0f));
         m_meshes.insert({id, std::move(meshResource)});
     }

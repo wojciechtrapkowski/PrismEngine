@@ -10,5 +10,8 @@ namespace Prism::Components
         struct SelectedNode
         {};
 
+        struct NotUserManagable
+        {};
+
     } // namespace Tags
 } // namespace Prism::Components

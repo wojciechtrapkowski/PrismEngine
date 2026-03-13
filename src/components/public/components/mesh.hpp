@@ -14,7 +14,6 @@ namespace Prism
         struct Mesh
         {
             Resources::MeshResource::ID resourceId;
-            std::string                 name;
         };
     } // namespace Components
 };    // namespace Prism
