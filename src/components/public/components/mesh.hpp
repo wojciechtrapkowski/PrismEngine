@@ -13,7 +13,7 @@ namespace Prism
     {
         struct Mesh
         {
-            Resources::MeshResource::ID resourceId;
+            Resources::MeshResource::ID resourceId = Resources::MeshResource::UNINITIALIZED_ID;
         };
     } // namespace Components
 };    // namespace Prism

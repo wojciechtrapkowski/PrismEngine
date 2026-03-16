@@ -321,7 +321,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
     void RasterizedGeometryDrawingSubsystem::Render(
         float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget)
     {
-        auto& registry = scene.GetRegistry();
+        auto& registry    = scene.GetRegistry();
+        auto& meshStorage = scene.GetMeshStorage();
 
         auto& resourceStorage = m_contextResources.GetResourceStorage();
         auto& vulkanResource  = m_contextResources.GetVulkanResource();
@@ -388,7 +389,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
             const auto& transform = meshTransformView.get<Components::Transform>(meshEntity).transform;
 
-            auto meshOpt = scene.GetMesh(meshResourceId);
+            auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
             if (!meshOpt) {
                 continue;
             }

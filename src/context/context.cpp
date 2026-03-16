@@ -73,19 +73,21 @@ namespace Prism::Context
         } else {
             auto& backpackModel = *backpackModelOpt;
             auto  backpackId    = std::hash<const char*>{}("MeshResources/Backpack");
-            scene.AddNewMesh(backpackId, "Backpack", std::move(backpackModel));
 
-            std::cout << "Loaded backpack model!" << std::endl;
+            auto& meshStorage = scene.GetMeshStorage();
+            meshStorage.Insert<Resources::MeshResource>(backpackId, std::move(backpackModel));
         }
 
-        // auto cubeModelOpt = meshLoader("cube.obj");
-        // if (!cubeModelOpt) {
-        //     std::cerr << "Couldn't load cube model!" << std::endl;
-        // } else {
-        //     auto &cubeModel = *cubeModelOpt;
-        //     auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
-        //     scene.AddNewMesh(cubeId, "Cube", std::move(cubeModel));
-        // }
+         auto cubeModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "cube.obj");
+         if (!cubeModelOpt) {
+             std::cerr << "Couldn't load cube model!" << std::endl;
+         } else {
+             auto &cubeModel = *cubeModelOpt;
+             auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
+
+             auto& meshStorage = scene.GetMeshStorage();
+             meshStorage.Insert<Resources::MeshResource>(cubeId, std::move(cubeModel));
+         }
 
         float deltaTime     = 0.0f;
         float lastFrameTime = 0.0f;

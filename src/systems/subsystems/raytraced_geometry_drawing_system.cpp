@@ -568,12 +568,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         auto& vmaAllocator    = _contextResources.GetVulkanResource().GetVmaAllocator();
         auto& vulkan          = _contextResources.GetVulkanResource();
 
+        auto& meshStorage = scene.GetMeshStorage();
+
         if (!(vulkan.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE)) {
             return;
         }
 
         _tlasAccelStructToDelete     = std::nullopt;
         _tlasInstancesBufferToDelete = std::nullopt;
+        _blasToInstanceData.clear();
 
         auto sbtBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(SBT_BUFFER_ID);
         if (!sbtBufferOpt) {
@@ -624,20 +627,29 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
 
         // BLAS creation.
-
         auto blasesCreationBlock = [&]() {
-            auto meshView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
+            auto meshView     = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
+            bool isEmptyScene = [&]() {
+                for (auto [_, _mesh, _transform] : meshView.each()) {
+                    return false;
+                }
+                return true;
+            }();
+            if (isEmptyScene) {
+                return false;
+            }
 
             for (auto [meshEntity, meshComponent, transformComponent] : meshView.each()) {
-                auto& meshResourceId      = meshComponent.resourceId;
-                auto  blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
-                auto  blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
+                auto& meshResourceId = meshComponent.resourceId;
 
-                auto meshOpt = scene.GetMesh(meshResourceId);
+                auto blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
+                auto blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
+
+                auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
                 if (!meshOpt) {
                     continue;
                 }
-                auto& mesh = meshOpt.value();
+                auto& mesh = meshOpt->get();
 
                 auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!accelStructureResourceOpt) {
@@ -658,6 +670,11 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }();
 
         auto tlasCreationBlock = [&]() {
+            // We can't create TLAS unless we have BLASes.
+            if (_blasToInstanceData.empty()) {
+                return false;
+            }
+
             std::vector<VkAccelerationStructureInstanceKHR> tlasInstances;
 
             // Optimization.
@@ -742,8 +759,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     tlasInstances.data(),
                     sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size());
 
-                auto tlasAccelStruct =
-                    createTLAS(_contextResources, commandBuffer, tlasInstancesBuffer, tlasInstances, TLAS_SCRATCH_BUFFER_ID);
+                auto tlasAccelStruct = createTLAS(_contextResources, commandBuffer, tlasInstancesBuffer, tlasInstances, TLAS_SCRATCH_BUFFER_ID);
 
                 resourceStorage.Insert<Resources::VkAccelerationStructureResource>(
                     TLAS_ACCEL_STRUCT_ID, std::make_unique<Resources::VkAccelerationStructureResource>(std::move(tlasAccelStruct)));

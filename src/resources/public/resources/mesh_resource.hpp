@@ -28,7 +28,7 @@ namespace Prism::Resources
             uint32_t idx;
         };
 
-        MeshResource(Resources::VkBufferResource<Vertex> vertexBuffer, Resources::VkBufferResource<Index> indexBuffer);
+        MeshResource(std::string name, Resources::VkBufferResource<Vertex> vertexBuffer, Resources::VkBufferResource<Index> indexBuffer);
 
         ~MeshResource() = default;
 
@@ -38,9 +38,11 @@ namespace Prism::Resources
         MeshResource(MeshResource&& other);
         MeshResource& operator=(MeshResource&& other);
 
-        Resources::VkBufferResource<Vertex>& GetVertexBuffer() { return vertexBuffer; }
+        Resources::VkBufferResource<Vertex>& GetVertexBuffer() { return _vertexBuffer; }
 
-        Resources::VkBufferResource<Index>& GetIndexBuffer() { return indexBuffer; }
+        Resources::VkBufferResource<Index>& GetIndexBuffer() { return _indexBuffer; }
+
+        const std::string& GetName() const { return _name; }
 
         VkFormat    GetVertexType() const { return VERTEX_TYPE; }
         VkIndexType GetIndexType() const { return INDEX_TYPE; }
@@ -48,8 +50,10 @@ namespace Prism::Resources
         friend void swap(MeshResource& lhs, MeshResource& rhs) noexcept;
 
     private:
-        Resources::VkBufferResource<Vertex> vertexBuffer = {};
-        Resources::VkBufferResource<Index>  indexBuffer  = {};
+        std::string _name = "None";
+
+        Resources::VkBufferResource<Vertex> _vertexBuffer = {};
+        Resources::VkBufferResource<Index>  _indexBuffer = {};
     };
 
 }; // namespace Prism::Resources

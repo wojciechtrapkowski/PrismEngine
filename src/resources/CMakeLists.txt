@@ -6,7 +6,6 @@ set(PRISM_RESOURCES_LIBRARY_NAME Prism_Resources)
 set(RESOURCES_SOURCES
     imgui_resource.cpp
     mesh_resource.cpp
-    scene.cpp
     window_resource.cpp
     vulkan_resource.cpp
     context_resources.cpp

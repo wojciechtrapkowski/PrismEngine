@@ -8,6 +8,8 @@
 #include "systems/subsystems/raytraced_geometry_drawing_subsystem.hpp"
 
 #include "components/systems_settings.hpp"
+#include "components/mesh.hpp"
+#include "components/transform.hpp"
 
 #include "volk/volk.h"
 
@@ -50,6 +52,21 @@ namespace Prism::Systems
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        auto meshTransformView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
+        bool isEmptyScene      = [&]() {
+            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
+                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }();
+        if (isEmptyScene) {
+            vkEndCommandBuffer(commandBuffer);
+            return;
+        }
 
         auto& registry            = scene.GetRegistry();
         auto  systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();

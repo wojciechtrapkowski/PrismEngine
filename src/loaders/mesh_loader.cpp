@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 
 #include <iostream>
+#include <filesystem>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -136,7 +137,10 @@ namespace Prism::Loaders
         stagingBuffer.Copy(vertexBuffer.GetBuffer(), loadedModelDescriptor.vertices.data(), vertexBuffer.GetBufferSize());
         stagingBuffer.Copy(indexBuffer.GetBuffer(), loadedModelDescriptor.indices.data(), indexBuffer.GetBufferSize());
 
-        Resources::MeshResource meshResource{std::move(vertexBuffer), std::move(indexBuffer)};
+        std::filesystem::path filePath(path);
+        auto                  fileName = filePath.stem().string();
+
+        Resources::MeshResource meshResource{fileName, std::move(vertexBuffer), std::move(indexBuffer)};
 
         return {std::make_unique<Resources::MeshResource>(std::move(meshResource))};
     }
