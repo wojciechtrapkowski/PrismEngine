@@ -3,6 +3,8 @@
 #include "resources/context_resources.hpp"
 #include "resources/scene.hpp"
 
+#include <optional>
+
 namespace Prism::UI
 {
     class SceneHierarchyUI
@@ -20,11 +22,14 @@ namespace Prism::UI
         void Update(float deltaTime, Resources::Scene& scene);
 
     private:
-        static constexpr auto ENTITY_RENAME_BUFFER_SIZE = 256;
+        struct RenamingEntityData
+        {
+            entt::entity renamingEntity;
+            std::string  newNameBuffer;
+        };
 
         Resources::ContextResources& _contextResources;
 
-        entt::entity      _renamingEntity     = entt::null;
-        std::vector<char> _entityRenameBuffer = std::vector<char>(ENTITY_RENAME_BUFFER_SIZE, '\0');
+        std::optional<RenamingEntityData> _renamingEntityData;
     };
 } // namespace Prism::UI

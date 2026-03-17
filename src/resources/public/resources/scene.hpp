@@ -31,5 +31,6 @@ namespace Prism::Resources
         entt::registry _registry;
 
         Resources::ResourceStorage _meshStorage;
+        Resources::ResourceStorage _systemsStorage;
     };
 }; // namespace Prism::Resources

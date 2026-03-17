@@ -123,7 +123,7 @@ namespace Prism::UI
             }
         }
 
-        void renderAddingNewComponents(entt::registry& registry, entt::entity entity)
+        void renderNodeContextMenu(entt::registry& registry, entt::entity entity)
         {
             auto& name = registry.get<Components::Name>(entity);
 
@@ -139,6 +139,74 @@ namespace Prism::UI
                     }
                     ImGui::EndMenu();
                 }
+
+                // Note: This must be the last item in the popup!
+                if (ImGui::MenuItem("Remove entity")) {
+                    registry.destroy(entity);
+                }
+
+                ImGui::EndPopup();
+            }
+        }
+
+        bool renderNode(entt::registry& registry, entt::entity entity)
+        {
+            auto& name = registry.get<Components::Name>(entity);
+
+            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (registry.all_of<Components::Tags::SelectedNode>(entity)) {
+                nodeFlags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            bool isOpened = ImGui::TreeNodeEx((void*)(intptr_t)entity, nodeFlags, "%s", name.name.c_str());
+
+            if (ImGui::IsItemClicked()) {
+                auto selectedNodeView = registry.view<Components::Tags::SelectedNode>();
+                if (!selectedNodeView.empty()) {
+                    registry.remove<Components::Tags::SelectedNode>(selectedNodeView.front());
+                }
+                registry.emplace_or_replace<Components::Tags::SelectedNode>(entity);
+            }
+
+            return isOpened;
+        }
+
+        bool renderRenamingNode(entt::registry& registry, entt::entity entity, std::string& newNameBuffer)
+        {
+            constexpr auto MAXIMUM_NAME_LENGTH = 256;
+
+            newNameBuffer.resize(MAXIMUM_NAME_LENGTH);
+
+            auto& name = registry.get<Components::Name>(entity);
+
+            ImGui::SameLine();
+            ImGui::SetKeyboardFocusHere();
+
+            bool confirmRename = false;
+
+            if (ImGui::InputText(
+                    "##rename", newNameBuffer.data(), newNameBuffer.size(), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+            {
+                confirmRename |= true; // confirm on Enter
+            }
+            if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                confirmRename |= true; // confirm on click outside
+            }
+
+            if (confirmRename) {
+                name.name = newNameBuffer.data();
+            }
+
+            return confirmRename;
+        }
+
+        void renderAddingNewEntity(entt::registry& registry)
+        {
+            if (ImGui::BeginPopupContextWindow("##SceneHierarchyContext_AddingNewEntity", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+                if (ImGui::MenuItem("Create new entity")) {
+                    auto newEntity = registry.create();
+                    registry.emplace<Components::Name>(newEntity, "New Entity");
+                }
                 ImGui::EndPopup();
             }
         }
@@ -153,64 +221,35 @@ namespace Prism::UI
         auto& registry    = scene.GetRegistry();
         auto& meshStorage = scene.GetMeshStorage();
 
+        // So it is not done per entity.
         std::vector<std::reference_wrapper<Resources::MeshResource>> availableMeshResources;
         for (auto it = meshStorage.begin<Resources::MeshResource>(); it != meshStorage.end<Resources::MeshResource>(); ++it) {
             availableMeshResources.push_back((*it).second);
         }
 
+        auto nameView = registry.view<Components::Name>();
+
         // We will display only entities that have a Name component.
-        for (auto entity : registry.view<Components::Name>()) {
+        for (auto entity : nameView) {
             auto& name = registry.get<Components::Name>(entity);
 
-            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (registry.all_of<Components::Tags::SelectedNode>(entity)) {
-                nodeFlags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            bool isRenaming = (_renamingEntity == entity);
-            bool isOpened   = false;
-
-            if (isRenaming) {
-                ImGui::SameLine();
-                ImGui::SetKeyboardFocusHere();
-
-                bool confirmRename = false;
-
-                if (ImGui::InputText(
-                        "##rename",
-                        _entityRenameBuffer.data(),
-                        _entityRenameBuffer.size(),
-                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
-                {
-                    confirmRename |= true; // confirm on Enter
-                }
-                if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                    confirmRename |= true; // confirm on click outside
-                }
+            if (_renamingEntityData && _renamingEntityData->renamingEntity == entity) {
+                bool confirmRename = renderRenamingNode(registry, entity, _renamingEntityData->newNameBuffer);
 
                 if (confirmRename) {
-                    name.name       = _entityRenameBuffer.data();
-                    _renamingEntity = entt::null;
+                    _renamingEntityData.reset();
                 }
 
-            } else {
-                isOpened = ImGui::TreeNodeEx((void*)(intptr_t)entity, nodeFlags, isRenaming ? " " : "%s", name.name.c_str());
+                continue;
             }
 
-            if (ImGui::IsItemClicked()) {
-                auto selectedNodeView = registry.view<Components::Tags::SelectedNode>();
-                if (!selectedNodeView.empty()) {
-                    registry.remove<Components::Tags::SelectedNode>(selectedNodeView.front());
-                }
-                registry.emplace_or_replace<Components::Tags::SelectedNode>(entity);
-            }
+            bool isOpened = renderNode(registry, entity);
 
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
-                _renamingEntity = entity;
-                std::snprintf(_entityRenameBuffer.data(), _entityRenameBuffer.size(), "%s", name.name.c_str());
+                _renamingEntityData = RenamingEntityData{entity, std::string(name.name)};
             }
 
-            renderAddingNewComponents(registry, entity);
+            renderNodeContextMenu(registry, entity);
 
             if (isOpened) {
                 renderTransformComponent(registry, entity);
@@ -220,13 +259,8 @@ namespace Prism::UI
             }
         }
 
-        if (ImGui::BeginPopupContextWindow("##SceneHierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-            if (ImGui::MenuItem("Create new entity")) {
-                auto newEntity = registry.create();
-                registry.emplace<Components::Name>(newEntity, "New Entity");
-            }
-            ImGui::EndPopup();
-        }
+        renderAddingNewEntity(registry);
+
         ImGui::End();
     }
 } // namespace Prism::UI
