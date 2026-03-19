@@ -14,9 +14,6 @@ namespace Prism::Loaders
 {
     namespace
     {
-
-        constexpr std::string_view MODELS_DIR = "models/";
-
         constexpr unsigned int MODELS_LOADING_FLAGS = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_OptimizeMeshes | aiProcess_JoinIdenticalVertices |
                                                       aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
 
@@ -95,7 +92,7 @@ namespace Prism::Loaders
 
         std::optional<MeshDescriptor> loadModel(Assimp::Importer& importer, const std::string& path)
         {
-            const aiScene* scene = importer.ReadFile(std::string(MODELS_DIR) + path, MODELS_LOADING_FLAGS);
+            const aiScene* scene = importer.ReadFile(path, MODELS_LOADING_FLAGS);
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
                 std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;

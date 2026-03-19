@@ -44,6 +44,11 @@ namespace Prism::Events
         std::pair<double, double> position;
     };
 
+    struct MouseScrollEvent
+    {
+        std::pair<double, double> scrollOffset;
+    };
+
     struct MouseButtonPressEvent
     {
         InputAction action;

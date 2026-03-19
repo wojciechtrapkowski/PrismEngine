@@ -1,7 +1,7 @@
 #include "systems/common_uniform_update_system.hpp"
 
 #include "components/camera.hpp"
-#include "components/fps_camera_control.hpp"
+#include "components/camera_control.hpp"
 #include "components/tags.hpp"
 #include "components/transform.hpp"
 

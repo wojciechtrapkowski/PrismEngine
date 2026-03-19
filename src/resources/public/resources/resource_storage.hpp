@@ -112,6 +112,17 @@ namespace Prism::Resources
             return std::nullopt;
         }
 
+        bool Contains(Resource::ID id, size_t index = 0) const
+        {
+            auto it = _resources.find(id);
+            if (it == _resources.end()) {
+                return false;
+            }
+            auto& storedResources = it->second;
+
+            return index < storedResources.size() && storedResources[index] != nullptr;
+        }
+
         void Clear() { _resources.clear(); }
 
         template<class T>

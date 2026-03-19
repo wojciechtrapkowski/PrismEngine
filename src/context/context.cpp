@@ -10,10 +10,18 @@
 #include "managers/scene_update_systems_manager.hpp"
 
 #include "resources/context_resources.hpp"
+
 #include "resources/scene.hpp"
+#include "systems/mesh_loading_system.hpp"
 
 #include <format>
 #include <iostream>
+
+// Testing purposes
+#include "components/transform.hpp"
+#include "components/mesh.hpp"
+#include "components/name.hpp"
+#include "components/tags.hpp"
 
 namespace Prism::Context
 {
@@ -57,9 +65,11 @@ namespace Prism::Context
     {
         Managers::ContextUpdateSystemsManager contextUpdateSystemsManager{_contextResources};
 
-        Managers::SceneDrawSystemsManager sceneDrawSystemsManager{_contextResources};
-
         Managers::SceneUpdateSystemsManager sceneUpdateSystemsManager{_contextResources};
+
+        Systems::MeshLoadingSystem meshLoadingSystem{_contextResources};
+
+        Managers::SceneDrawSystemsManager sceneDrawSystemsManager{_contextResources};
 
         Resources::Scene scene{};
 
@@ -67,7 +77,8 @@ namespace Prism::Context
 
         Resources::VkStagingBufferResource stagingBuffer{_contextResources.GetVulkanResource().GetVmaAllocator()};
 
-        auto backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "backpack.obj");
+        // For testing purposes.
+        auto backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "models/backpack.obj");
         if (!backpackModelOpt) {
             std::cerr << "Couldn't load backpack model!" << std::endl;
         } else {
@@ -76,18 +87,31 @@ namespace Prism::Context
 
             auto& meshStorage = scene.GetMeshStorage();
             meshStorage.Insert<Resources::MeshResource>(backpackId, std::move(backpackModel));
+
+            auto& registry = scene.GetRegistry();
+            auto  entity   = registry.create();
+            registry.emplace<Components::Mesh>(entity, backpackId);
+            registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
+            registry.emplace<Components::Name>(entity, "Backpack");
+            registry.emplace<Components::Tags::ActivePlayer>(entity);
         }
 
-         auto cubeModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "cube.obj");
-         if (!cubeModelOpt) {
-             std::cerr << "Couldn't load cube model!" << std::endl;
-         } else {
-             auto &cubeModel = *cubeModelOpt;
-             auto cubeId = std::hash<const char *>{}("MeshResources/Cube");
+        auto cubeModelOpt = meshLoader(_contextResources.GetVulkanResource(), stagingBuffer, "models/cube.obj");
+        if (!cubeModelOpt) {
+            std::cerr << "Couldn't load cube model!" << std::endl;
+        } else {
+            auto& cubeModel = *cubeModelOpt;
+            auto  cubeId    = std::hash<const char*>{}("MeshResources/Cube");
 
-             auto& meshStorage = scene.GetMeshStorage();
-             meshStorage.Insert<Resources::MeshResource>(cubeId, std::move(cubeModel));
-         }
+            auto& meshStorage = scene.GetMeshStorage();
+            meshStorage.Insert<Resources::MeshResource>(cubeId, std::move(cubeModel));
+
+            auto& registry = scene.GetRegistry();
+            auto  entity   = registry.create();
+            registry.emplace<Components::Mesh>(entity, cubeId);
+            registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
+            registry.emplace<Components::Name>(entity, "Cube");
+        }
 
         float deltaTime     = 0.0f;
         float lastFrameTime = 0.0f;
@@ -107,6 +131,11 @@ namespace Prism::Context
                 contextUpdateSystemsManager.Update(deltaTime);
 
                 sceneUpdateSystemsManager.Update(deltaTime, scene);
+
+                // ExternalDataLoadingSystemsManager or something like that.
+                // Then we can remove scene as a parameter. These value should be stored per context in my opinion.
+                // But I still need to think about it.
+                meshLoadingSystem.Update(deltaTime, scene, stagingBuffer);
 
                 sceneDrawSystemsManager.Update(deltaTime, scene, stagingBuffer);
 

@@ -2,7 +2,7 @@
 
 #include "systems/camera_creation_system.hpp"
 #include "systems/common_uniform_update_system.hpp"
-#include "systems/fps_motion_control_system.hpp"
+#include "systems/motion_control_system.hpp"
 
 #include "resources/context_resources.hpp"
 #include "resources/scene.hpp"
@@ -25,7 +25,7 @@ namespace Prism::Managers
 
     private:
         Systems::CameraCreationSystem      cameraCreationSystem;
-        Systems::FpsMotionControlSystem    fpsMotionControlSystem;
+        Systems::MotionControlSystem       motionControlSystem;
         Systems::CommonUniformUpdateSystem commonUniformUpdateSystem;
     };
 } // namespace Prism::Managers

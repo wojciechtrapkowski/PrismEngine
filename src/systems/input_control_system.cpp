@@ -109,6 +109,14 @@ namespace Prism::Systems
         handleMouseMovement(dispatcher, windowPtr);
         handleMouseButtonPress(dispatcher, windowPtr);
 
+        // Because we need dispatcher for each callback. Unfortunately we can't handle everything using plain functions.
+        glfwSetWindowUserPointer(windowPtr, &dispatcher);
+
+        glfwSetScrollCallback(windowPtr, [](GLFWwindow* window, double xoffset, double yoffset) {
+            auto* dispatcher = static_cast<entt::dispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->enqueue<Events::MouseScrollEvent>(Events::MouseScrollEvent{.scrollOffset = {xoffset, yoffset}});
+        });
+
         if (glfwGetKey(windowPtr, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(windowPtr, true);
         }

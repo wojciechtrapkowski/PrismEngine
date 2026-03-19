@@ -10,13 +10,14 @@ set(SYSTEMS_SOURCES
     input_control_system.cpp
     event_poll_system.cpp
     camera_creation_system.cpp
-    fps_motion_control_system.cpp
+    motion_control_system.cpp
     common_uniform_update_system.cpp
     ui_drawing_system.cpp
     gizmo_drawing_system.cpp
     window_resize_system.cpp
     mesh_drawing_system.cpp
     frame_swap_system.cpp
+    mesh_loading_system.cpp
     
     subsystems/rasterized_geometry_drawing_subsystem.cpp
     subsystems/raytraced_geometry_drawing_system.cpp
@@ -28,13 +29,14 @@ set(SYSTEMS_HEADERS
     public/systems/input_control_system.hpp
     public/systems/event_poll_system.hpp
     public/systems/camera_creation_system.hpp
-    public/systems/fps_motion_control_system.hpp
+    public/systems/motion_control_system.hpp
     public/systems/common_uniform_update_system.hpp
     public/systems/ui_drawing_system.hpp
     public/systems/gizmo_drawing_system.hpp
     public/systems/window_resize_system.hpp
     public/systems/mesh_drawing_system.hpp
     public/systems/frame_swap_system.hpp
+    public/systems/mesh_loading_system.hpp
 
     public/systems/subsystems/rasterized_geometry_drawing_subsystem.hpp
     public/systems/subsystems/raytraced_geometry_drawing_subsystem.hpp

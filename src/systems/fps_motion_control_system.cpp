@@ -22,6 +22,8 @@ namespace Prism::Systems
         constexpr glm::vec3 WORLD_FORWARD_VECTOR = {0.0f, 0.0f, -1.0f};
         constexpr glm::vec3 WORLD_RIGHT_VECTOR   = {1.0f, 0.0f, 0.0f};
         constexpr glm::vec3 WORLD_UP_VECTOR      = {0.0f, 1.0f, 0.0f};
+        constexpr float     MIN_FOCUS_DISTANCE   = 1.0f;
+
     } // namespace
 
     FpsMotionControlSystem::FpsMotionControlSystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources)
@@ -33,6 +35,8 @@ namespace Prism::Systems
         m_onMousePressedConnection = dispatcher.sink<Events::MouseButtonPressEvent>().connect<&FpsMotionControlSystem::onMousePressed>(this);
 
         m_onMouseMovementConnection = dispatcher.sink<Events::MouseMoveEvent>().connect<&FpsMotionControlSystem::onMouseMoved>(this);
+
+        m_onMouseScrollConnection = dispatcher.sink<Events::MouseScrollEvent>().connect<&FpsMotionControlSystem::onMouseScrolled>(this);
     };
 
     void FpsMotionControlSystem::Update(float deltaTime, Resources::Scene& scene)
@@ -44,81 +48,156 @@ namespace Prism::Systems
             return;
         }
 
-        if (!registry.all_of<Components::Camera, Components::FpsCameraControl, Components::Transform>(activeCameraView.front())) {
+        auto playerView = registry.view<Components::Tags::ActivePlayer>();
+        if (playerView.empty()) {
             return;
         }
 
-        auto fpsCamera = activeCameraView.front();
+        if (!registry.all_of<Components::Camera, Components::CameraControl, Components::Transform>(activeCameraView.front())) {
+            return;
+        }
 
-        auto& camera        = registry.get<Components::Camera>(fpsCamera);
-        auto& cameraControl = registry.get<Components::FpsCameraControl>(fpsCamera);
-        auto& transform     = registry.get<Components::Transform>(fpsCamera);
+        if (!registry.all_of<Components::Transform>(playerView.front())) {
+            return;
+        }
 
-        auto cameraPosition = glm::vec3(transform.transform[3]);
-        auto cameraRotation = glm::mat4(glm::mat3(transform.transform));
+        auto cameraEntity = activeCameraView.front();
 
-        float pitch, yaw, roll;
+        auto& cameraComponent        = registry.get<Components::Camera>(cameraEntity);
+        auto& cameraControlComponent = registry.get<Components::CameraControl>(cameraEntity);
+        auto& cameraTransform        = registry.get<Components::Transform>(cameraEntity);
 
-        glm::extractEulerAngleYXZ(cameraRotation, yaw, pitch, roll);
+        auto cameraType = [&]() {
+            if (cameraControlComponent.currentDistance <= MIN_FOCUS_DISTANCE) {
+                return CameraType::FirstPerson;
+            } else {
+                return CameraType::ThirdPerson;
+            }
+        }();
 
-        pitch = glm::degrees(pitch);
-        yaw   = glm::degrees(yaw);
-        roll  = glm::degrees(roll);
+        auto playerEntity = playerView.front();
+
+        auto& playerTransform = registry.get<Components::Transform>(playerEntity);
+
+        auto playerPosition = glm::vec3(playerTransform.transform[3]);
+        auto playerRotation = glm::mat4(glm::mat3(playerTransform.transform));
+
+        auto cameraPosition = glm::vec3(cameraTransform.transform[3]);
+        auto cameraRotation = glm::mat4(glm::mat3(cameraTransform.transform));
+
+        float playerPitch, playerYaw, playerRoll;
+        float cameraPitch, cameraYaw, cameraRoll;
+
+        glm::extractEulerAngleYXZ(playerRotation, playerYaw, playerPitch, playerRoll);
+        glm::extractEulerAngleYXZ(cameraRotation, cameraYaw, cameraPitch, cameraRoll);
+
+        playerPitch = glm::degrees(playerPitch);
+        playerYaw   = glm::degrees(playerYaw);
+        playerRoll  = glm::degrees(playerRoll);
+
+        cameraPitch = glm::degrees(cameraPitch);
+        cameraYaw   = glm::degrees(cameraYaw);
+        cameraRoll  = glm::degrees(cameraRoll);
 
         if (m_mouseButtonToStateMap[Events::MoveEvents::MouseButton::Left] == Events::MoveEvents::InputAction::Pressed) {
-            float deltaX = m_mousePositionDelta.first * cameraControl.mouseSensitivity;
-            float deltaY = m_mousePositionDelta.second * cameraControl.mouseSensitivity;
+            float deltaX = m_mousePositionDelta.first * cameraControlComponent.mouseSensitivity;
+            float deltaY = m_mousePositionDelta.second * cameraControlComponent.mouseSensitivity;
 
-            yaw -= deltaX;
-            pitch += deltaY;
+            playerYaw -= deltaX;
+            playerPitch += deltaY;
 
-            pitch = glm::clamp(pitch, -PITCH_LIMIT, PITCH_LIMIT);
+            playerPitch = glm::clamp(playerPitch, -PITCH_LIMIT, PITCH_LIMIT);
         }
 
-        yaw   = glm::radians(yaw);
-        pitch = glm::radians(pitch);
+        if (m_mouseButtonToStateMap[Events::MoveEvents::MouseButton::Right] == Events::MoveEvents::InputAction::Pressed) {
+            float deltaX = m_mousePositionDelta.first * cameraControlComponent.mouseSensitivity;
+            float deltaY = m_mousePositionDelta.second * cameraControlComponent.mouseSensitivity;
 
-        cameraRotation = glm::eulerAngleYXZ(yaw, pitch, 0.0f);
+            cameraYaw -= deltaX;
+            cameraPitch += deltaY;
 
-        auto cameraRight   = glm::vec3(cameraRotation[0]);
-        auto cameraUp      = glm::vec3(cameraRotation[1]);
-        auto cameraForward = -glm::vec3(cameraRotation[2]);
+            cameraPitch = glm::clamp(cameraPitch, -PITCH_LIMIT, PITCH_LIMIT);
+        }
 
+        playerYaw   = glm::radians(playerYaw);
+        playerPitch = glm::radians(playerPitch);
+
+        cameraYaw   = glm::radians(cameraYaw);
+        cameraPitch = glm::radians(cameraPitch);
+
+        if (cameraType == CameraType::ThirdPerson) {
+            playerPitch = 0.f;
+        }
+
+        playerRotation = glm::eulerAngleYXZ(playerYaw, playerPitch, 0.0f);
+        cameraRotation = glm::eulerAngleYXZ(cameraYaw, cameraPitch, 0.0f);
+
+        auto playerRight   = glm::vec3(playerRotation[0]);
+        auto playerUp      = glm::vec3(playerRotation[1]);
+        auto playerForward = -glm::vec3(playerRotation[2]);
+
+        float flipSign = cameraType == CameraType::FirstPerson ? 1.f : -1.f;
         if (m_keyToStateMap[Events::MoveEvents::Keys::W] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition += cameraForward * cameraControl.moveSpeed * deltaTime;
+            playerPosition += flipSign * playerForward * cameraControlComponent.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::S] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition -= cameraForward * cameraControl.moveSpeed * deltaTime;
+            playerPosition -= flipSign * playerForward * cameraControlComponent.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::A] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition -= cameraRight * cameraControl.moveSpeed * deltaTime;
+            playerPosition -= flipSign * playerRight * cameraControlComponent.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::D] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition += cameraRight * cameraControl.moveSpeed * deltaTime;
+            playerPosition += flipSign * playerRight * cameraControlComponent.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::SPACE] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition += WORLD_UP_VECTOR * cameraControl.moveSpeed * deltaTime;
+            playerPosition += flipSign * WORLD_UP_VECTOR * cameraControlComponent.moveSpeed * deltaTime;
         }
         if (m_keyToStateMap[Events::MoveEvents::Keys::SHIFT] == Events::MoveEvents::InputAction::Pressed) {
-            cameraPosition -= WORLD_UP_VECTOR * cameraControl.moveSpeed * deltaTime;
+            playerPosition -= flipSign * WORLD_UP_VECTOR * cameraControlComponent.moveSpeed * deltaTime;
         }
 
-        glm::mat4 rotationMat    = cameraRotation;
-        glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), cameraPosition);
-        transform.transform      = translationMat * rotationMat;
+        cameraControlComponent.currentDistance -= m_scrollOffset.second * cameraControlComponent.moveSpeed * deltaTime;
+        cameraControlComponent.currentDistance = glm::max(cameraControlComponent.currentDistance, MIN_FOCUS_DISTANCE);
 
-        glm::mat4 view = glm::lookAt(cameraPosition, cameraPosition + cameraForward, cameraUp);
+        glm::mat4 rotationMat     = playerRotation;
+        glm::mat4 translationMat  = glm::translate(glm::mat4(1.0f), playerPosition);
+        playerTransform.transform = translationMat * rotationMat;
+
+        // Camera
+        float cameraDistance = cameraControlComponent.currentDistance;
+        float cameraHeight   = 2.0f;
+
+        // Spherical coordinates: distance is constant, yaw/pitch just change the orbit point
+        float x = cameraDistance * cos(cameraPitch) * sin(cameraYaw);
+        float y = cameraDistance * sin(cameraPitch);
+        float z = cameraDistance * cos(cameraPitch) * cos(cameraYaw);
+
+        cameraPosition = playerPosition + glm::vec3(x, y, z);
+
+        cameraTransform.transform = glm::translate(glm::mat4(1.0f), cameraPosition) * cameraRotation;
+
+        glm::vec3 lookTarget = playerPosition + WORLD_UP_VECTOR * 0.5f;
+
+        glm::mat4 view = [&]() {
+            if (cameraDistance == MIN_FOCUS_DISTANCE) {
+                return glm::lookAt(playerPosition, playerPosition + playerForward, WORLD_UP_VECTOR);
+            } else {
+                return glm::lookAt(cameraPosition, lookTarget, WORLD_UP_VECTOR);
+            }
+        }();
 
         auto [width, height] = m_contextResources.GetVulkanResource().GetSwapchainExtent();
 
         float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 
-        glm::mat4 projection = glm::perspective(glm::radians(cameraControl.fov), aspectRatio, cameraControl.nearPlane, cameraControl.farPlane);
+        glm::mat4 projection =
+            glm::perspective(glm::radians(cameraControlComponent.fov), aspectRatio, cameraControlComponent.nearPlane, cameraControlComponent.farPlane);
 
-        camera.view       = std::move(view);
-        camera.projection = std::move(projection);
+        cameraComponent.view       = std::move(view);
+        cameraComponent.projection = std::move(projection);
 
         m_mousePositionDelta = {0.f, 0.f};
+        m_scrollOffset       = {0.f, 0.f};
         m_keyToStateMap.clear();
         m_mouseButtonToStateMap.clear();
     }
@@ -142,6 +221,11 @@ namespace Prism::Systems
             m_mousePositionDelta = {0, 0};
         }
         m_mousePosition = {event.position.first, event.position.second};
+    }
+
+    void FpsMotionControlSystem::onMouseScrolled(const Events::MouseScrollEvent& event)
+    {
+        m_scrollOffset = event.scrollOffset;
     }
 
 } // namespace Prism::Systems

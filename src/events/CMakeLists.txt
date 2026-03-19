@@ -6,6 +6,7 @@ set(PRISM_EVENTS_LIBRARY_NAME Prism_Events)
 set(EVENTS_HEADERS
     public/events/app_events.hpp
     public/events/move_events.hpp
+    public/events/file_events.hpp
 )
 
 add_library(${PRISM_EVENTS_LIBRARY_NAME} INTERFACE

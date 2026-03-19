@@ -9,7 +9,7 @@ namespace Prism::UI
     {
     public:
         MenuBarUI(Resources::ContextResources& contextResources);
-        ~MenuBarUI() = default;
+        ~MenuBarUI();
 
         MenuBarUI(const MenuBarUI&)            = delete;
         MenuBarUI& operator=(const MenuBarUI&) = delete;
@@ -20,6 +20,6 @@ namespace Prism::UI
         void Update(float deltaTime, Resources::Scene& scene);
 
     private:
-        Resources::ContextResources& m_contextResources;
+        Resources::ContextResources& _contextResources;
     };
 } // namespace Prism::UI

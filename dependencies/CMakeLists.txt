@@ -42,6 +42,7 @@ add_subdirectory(assimp)
 add_subdirectory(ImGuizmo)
 add_subdirectory(VulkanMemoryAllocator)
 add_subdirectory(volk)
+add_subdirectory(nativefiledialog-extended)
 
 # To use volk.
 target_compile_definitions(VulkanMemoryAllocator

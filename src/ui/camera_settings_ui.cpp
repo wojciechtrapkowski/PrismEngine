@@ -3,7 +3,7 @@
 
 #include "ui/camera_settings_ui.hpp"
 
-#include "components/fps_camera_control.hpp"
+#include "components/camera_control.hpp"
 #include "components/tags.hpp"
 
 namespace Prism::UI
@@ -22,20 +22,13 @@ namespace Prism::UI
         }
         auto activeCameraEntity = activeCameraView.front();
 
-        // For now, we support only FPS camera
-        bool isFpsCamera = registry.all_of<Components::FpsCameraControl>(activeCameraEntity);
-        if (!isFpsCamera) {
-            ImGui::End();
-            return;
-        }
+        auto& cameraControl = registry.get<Components::CameraControl>(activeCameraEntity);
 
-        auto& fpsCameraControl = registry.get<Components::FpsCameraControl>(activeCameraEntity);
-
-        ImGui::SliderFloat("Mouse sensitivity", &fpsCameraControl.mouseSensitivity, 0.1f, 5.0f);
-        ImGui::SliderFloat("Move speed", &fpsCameraControl.moveSpeed, 1.0f, 20.0f);
-        ImGui::SliderFloat("FOV", &fpsCameraControl.fov, 45.0f, 90.0f);
-        ImGui::SliderFloat("Near plane", &fpsCameraControl.nearPlane, 0.01f, 1.0f);
-        ImGui::SliderFloat("Far plane", &fpsCameraControl.farPlane, 10.0f, 10000.0f);
+        ImGui::SliderFloat("Mouse sensitivity", &cameraControl.mouseSensitivity, 0.1f, 5.0f);
+        ImGui::SliderFloat("Move speed", &cameraControl.moveSpeed, 1.0f, 20.0f);
+        ImGui::SliderFloat("FOV", &cameraControl.fov, 45.0f, 90.0f);
+        ImGui::SliderFloat("Near plane", &cameraControl.nearPlane, 0.01f, 1.0f);
+        ImGui::SliderFloat("Far plane", &cameraControl.farPlane, 10.0f, 10000.0f);
 
         ImGui::NewLine();
         ImGui::Separator();
@@ -43,35 +36,16 @@ namespace Prism::UI
 
         ImGui::BeginChild("Camera selection");
 
-        std::vector<CameraType> availableCameraTypes;
+        constexpr const char* cameraTypeNames[] = {"First Person", "Third Person"};
+        int                   currentType       = static_cast<int>(cameraControl.cameraType);
 
-        if (!registry.view<Components::FpsCameraControl>().empty()) {
-            availableCameraTypes.push_back(
-                {FPS_CAMERA_NAME,
-                 [](entt::registry& registry, entt::entity e) { return registry.all_of<Components::FpsCameraControl>(e); },
-                 [](entt::registry& registry) {
-                     auto fpsCameraView   = registry.view<Components::FpsCameraControl>();
-                     auto fpsCameraEntity = fpsCameraView.front();
-                     registry.emplace<Components::Tags::ActiveCamera>(fpsCameraEntity);
-                 }});
-        }
+        if (ImGui::BeginCombo("Camera Type", cameraTypeNames[currentType])) {
+            for (int i = 0; i < IM_ARRAYSIZE(cameraTypeNames); ++i) {
+                bool isSelected = (currentType == i);
 
-        if (availableCameraTypes.empty()) {
-            return;
-        }
-
-        const char* previewValue = availableCameraTypes.front().name;
-
-        if (ImGui::BeginCombo("Camera Type", previewValue)) {
-            for (int i = 0; i < availableCameraTypes.size(); ++i) {
-                bool isSelected = (availableCameraTypes[i].checkIfActive(registry, activeCameraEntity));
-
-                if (ImGui::Selectable(availableCameraTypes[i].name, isSelected)) {
-                    registry.remove<Components::Tags::ActiveCamera>(activeCameraEntity);
-
-                    availableCameraTypes[i].makeActive(registry);
+                if (ImGui::Selectable(cameraTypeNames[i], isSelected)) {
+                    cameraControl.cameraType = static_cast<Components::CameraControl::CameraType>(i);
                 }
-
                 if (isSelected) {
                     ImGui::SetItemDefaultFocus();
                 }

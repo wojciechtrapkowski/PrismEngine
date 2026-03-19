@@ -6,7 +6,7 @@ set(MODELS_BINARY_DIR "${CMAKE_BINARY_DIR}/bin/models")
 file(MAKE_DIRECTORY ${MODELS_BINARY_DIR})
 
 # Find all Assimp-supported model files
-file(GLOB MODELS_FILES
+file(GLOB MODELS_FILES CONFIGURE_DEPENDS
     "${MODELS_SOURCE_DIR}/*.obj"
     "${MODELS_SOURCE_DIR}/*.fbx"
     "${MODELS_SOURCE_DIR}/*.dae"

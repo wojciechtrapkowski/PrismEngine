@@ -12,6 +12,8 @@ namespace Prism::Components
 
         struct NotUserManagable
         {};
+        struct ActivePlayer
+        {};
 
     } // namespace Tags
 } // namespace Prism::Components

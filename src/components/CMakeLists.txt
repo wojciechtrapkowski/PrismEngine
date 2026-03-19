@@ -8,7 +8,7 @@ set(COMPONENTS_HEADERS
     public/components/tags.hpp
     public/components/transform.hpp
     public/components/camera.hpp
-    public/components/fps_camera_control.hpp
+    public/components/camera_control.hpp
     public/components/systems_settings.hpp
     public/components/name.hpp
 )
