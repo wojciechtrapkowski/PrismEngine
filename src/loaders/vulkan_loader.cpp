@@ -174,16 +174,27 @@ namespace Prism::Loaders
             std::vector<VkPhysicalDevice> devices(deviceCount);
             vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+            std::optional<VkPhysicalDevice> pickedDevice = std::nullopt;
             for (const auto& device : devices) {
                 VkPhysicalDeviceProperties deviceProperties{};
                 vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-                if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && checkPhysicalDeviceExtensionsSupport(device)) {
-                    return device;
+                if (!checkPhysicalDeviceExtensionsSupport(device)) {
+                    continue;
+                }
+
+                if (!pickedDevice) {
+                    pickedDevice = device;
+                } else if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                    pickedDevice = device;
                 }
             }
 
-            throw std::runtime_error("Couldn't find a suitable discrete GPU!");
+            if (!pickedDevice) {
+                throw std::runtime_error("Couldn't find a suitable discrete GPU!");
+            }
+
+            return pickedDevice.value();
         };
 
         std::pair<VkDevice, Resources::VulkanDeviceAdditionalExtensions>

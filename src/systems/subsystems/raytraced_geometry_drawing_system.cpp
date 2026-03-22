@@ -527,7 +527,12 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
     RaytracedGeometryDrawingSubsystem::RaytracedGeometryDrawingSubsystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
-        auto&            vulkanResource = _contextResources.GetVulkanResource();
+        auto& vulkanResource = _contextResources.GetVulkanResource();
+
+        if (!(vulkanResource.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE)) {
+            return;
+        }
+
         VkDevice         device         = vulkanResource.GetDevice();
         VkPhysicalDevice physicalDevice = vulkanResource.GetPhysicalDevice();
 

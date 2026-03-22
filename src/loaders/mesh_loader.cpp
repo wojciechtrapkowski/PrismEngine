@@ -4,6 +4,7 @@
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include <iostream>
@@ -24,8 +25,9 @@ namespace Prism::Loaders
 
         struct MeshDescriptor
         {
-            std::vector<Vertex> vertices;
-            std::vector<Index>  indices;
+            std::vector<Vertex>        vertices;
+            std::vector<Index>         indices;
+            std::optional<std::string> texturePath;
         };
 
         glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4& aiMat)
@@ -170,7 +172,7 @@ namespace Prism::Loaders
 
             VkImage       textureImage      = VK_NULL_HANDLE;
             VmaAllocation textureAllocation = VK_NULL_HANDLE;
-            if (vmaCreateImage(vulkanResource.GetAllocator(), &imageInfo, &imageAllocInfo, &textureImage, &textureAlloc, nullptr) != VK_SUCCESS) {
+            if (vmaCreateImage(vulkanResource.GetVmaAllocator(), &imageInfo, &imageAllocInfo, &textureImage, &textureAllocation, nullptr) != VK_SUCCESS) {
                 stbi_image_free(data);
                 return std::nullopt;
             }
@@ -190,7 +192,7 @@ namespace Prism::Loaders
 
             VkImageView imageView = VK_NULL_HANDLE;
             if (vkCreateImageView(vulkanResource.GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-                vmaDestroyImage(vulkanResource.GetAllocator(), textureImage, textureAllocation);
+                vmaDestroyImage(vulkanResource.GetVmaAllocator(), textureImage, textureAllocation);
                 return std::nullopt;
             }
 
@@ -213,13 +215,14 @@ namespace Prism::Loaders
             VkSampler sampler = VK_NULL_HANDLE;
             if (vkCreateSampler(vulkanResource.GetDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
                 vkDestroyImageView(vulkanResource.GetDevice(), imageView, nullptr);
-                vmaDestroyImage(vulkanResource.GetAllocator(), textureImage, textureAllocation);
+                vmaDestroyImage(vulkanResource.GetVmaAllocator(), textureImage, textureAllocation);
                 return std::nullopt;
             }
 
             stbi_image_free(data);
 
-            return texture;
+            return std::nullopt;
+            // return texture;
         }
     } // namespace
 
@@ -239,16 +242,21 @@ namespace Prism::Loaders
             return std::nullopt;
         }
 
+        auto raytracingFlags = [&]() {
+            if (vulkanResource.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE) {
+                return VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+            }
+            return 0;
+        }();
+
         Resources::VkBufferResource<Vertex> vertexBuffer(
             vulkanResource.GetVmaAllocator(),
             loadedModelDescriptor.vertices.size() * sizeof(Vertex),
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | raytracingFlags);
         Resources::VkBufferResource<Index> indexBuffer(
             vulkanResource.GetVmaAllocator(),
             loadedModelDescriptor.indices.size() * sizeof(Index),
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | raytracingFlags);
 
         stagingBuffer.Copy(vertexBuffer.GetBuffer(), loadedModelDescriptor.vertices.data(), vertexBuffer.GetBufferSize());
         stagingBuffer.Copy(indexBuffer.GetBuffer(), loadedModelDescriptor.indices.data(), indexBuffer.GetBufferSize());

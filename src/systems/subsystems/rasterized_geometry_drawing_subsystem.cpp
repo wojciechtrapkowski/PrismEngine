@@ -223,8 +223,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             renderingInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
             renderingInfo.colorAttachmentCount    = 1;
             renderingInfo.pColorAttachmentFormats = &colorFormat;
-            renderingInfo.depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT_S8_UINT;
-            renderingInfo.stencilAttachmentFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
+            renderingInfo.depthAttachmentFormat   = Resources::RenderTargetResource::GetDepthFormat();
+            renderingInfo.stencilAttachmentFormat = Resources::RenderTargetResource::GetDepthFormat();
 
             // Graphics pipeline create info
             VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
@@ -314,7 +314,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
-    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene){
+    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene) {
 
     };
 

@@ -54,7 +54,7 @@ namespace Prism::Resources
         vmaUnmapMemory(_allocator, _stagingBuffer.GetAllocation());
 
         VkBufferImageCopy region{};
-        region.bufferOffset                    = currentlyUtilized;
+        region.bufferOffset                    = _currentlyUtilized;
         region.bufferRowLength                 = 0;
         region.bufferImageHeight               = 0;
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -93,8 +93,8 @@ namespace Prism::Resources
             vkCmdCopyBuffer(commandBuffer, _stagingBuffer.GetBuffer(), pending.destination, 1, &pending.region);
         }
 
-        for (const auto& pending : pendingImageCopies) {
-            vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.GetBuffer(), pending.destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &pending.region);
+        for (const auto& pending : _pendingImageCopies) {
+            vkCmdCopyBufferToImage(commandBuffer, _stagingBuffer.GetBuffer(), pending.destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &pending.region);
         }
 
         _pendingCopies.clear();
@@ -106,36 +106,36 @@ namespace Prism::Resources
 
     void VkStagingBufferResource::checkIfResizeIsNeeded(size_t additionalSize)
     {
-        if (additionalSize + currentlyUtilized > stagingBuffer.GetBufferSize()) {
-            size_t newSize = std::max(stagingBuffer.GetBufferSize() * 2, static_cast<VkDeviceSize>(additionalSize + currentlyUtilized));
+        if (additionalSize + _currentlyUtilized > _stagingBuffer.GetBufferSize()) {
+            size_t newSize = std::max(_stagingBuffer.GetBufferSize() * 2, static_cast<VkDeviceSize>(additionalSize + _currentlyUtilized));
 
-            VkBufferResource<> newBuffer(allocator, newSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            VkBufferResource<> newBuffer(_allocator, newSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
             // Copy old contents & replace previous buffer with the new one.
-            if (currentlyUtilized > 0) {
+            if (_currentlyUtilized > 0) {
                 void* oldData = nullptr;
-                vmaMapMemory(allocator, stagingBuffer.GetAllocation(), &oldData);
+                vmaMapMemory(_allocator, _stagingBuffer.GetAllocation(), &oldData);
 
                 void* newData = nullptr;
-                vmaMapMemory(allocator, newBuffer.GetAllocation(), &newData);
+                vmaMapMemory(_allocator, newBuffer.GetAllocation(), &newData);
 
-                std::memcpy(newData, oldData, currentlyUtilized);
+                std::memcpy(newData, oldData, _currentlyUtilized);
 
-                vmaUnmapMemory(allocator, newBuffer.GetAllocation());
-                vmaUnmapMemory(allocator, stagingBuffer.GetAllocation());
+                vmaUnmapMemory(_allocator, newBuffer.GetAllocation());
+                vmaUnmapMemory(_allocator, _stagingBuffer.GetAllocation());
             }
 
-            stagingBuffer = std::move(newBuffer);
+            _stagingBuffer = std::move(newBuffer);
         }
     }
 
     void swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept
     {
         using std::swap;
-        swap(first.allocator, second.allocator);
-        swap(first.stagingBuffer, second.stagingBuffer);
-        swap(first.currentlyUtilized, second.currentlyUtilized);
-        swap(first.pendingCopies, second.pendingCopies);
-        swap(first.pendingImageCopies, second.pendingImageCopies);
+        swap(first._allocator, second._allocator);
+        swap(first._stagingBuffer, second._stagingBuffer);
+        swap(first._currentlyUtilized, second._currentlyUtilized);
+        swap(first._pendingCopies, second._pendingCopies);
+        swap(first._pendingImageCopies, second._pendingImageCopies);
     }
 } // namespace Prism::Resources

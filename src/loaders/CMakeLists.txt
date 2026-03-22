@@ -31,6 +31,7 @@ add_dependencies(
         Prism_Utils
         volk
         VulkanMemoryAllocator
+        stb
 )
 
 target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
@@ -42,6 +43,7 @@ target_link_libraries(${PRISM_LOADERS_LIBRARY_NAME}
         Prism_Utils
         volk
         VulkanMemoryAllocator
+        stb
 )
 
 target_include_directories(${PRISM_LOADERS_LIBRARY_NAME}

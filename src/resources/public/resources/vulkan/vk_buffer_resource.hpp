@@ -14,12 +14,12 @@ namespace Prism::Resources
 {
     namespace
     {
-        auto getBufferDeviceAddress = [&](VkDevice device, VkBuffer buffer) {
+        auto getBufferDeviceAddress = [](VkDevice device, VkBuffer buffer) {
             VkBufferDeviceAddressInfoKHR addressInfo{VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR};
             addressInfo.buffer = buffer;
             return vkGetBufferDeviceAddress(device, &addressInfo);
         };
-    }
+    } // namespace
 
     template<typename T = void>
     struct VkBufferResource : ResourceImpl<VkBufferResource<T>>
@@ -34,7 +34,7 @@ namespace Prism::Resources
         VkBufferResource() = default;
 
         explicit VkBufferResource(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) :
-            buffer(VK_NULL_HANDLE), bufferSize(size), allocation(VK_NULL_HANDLE), allocator(allocator)
+            bufferSize(size), allocator(allocator)
         {
             VkBufferCreateInfo bufferInfo{};
             bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -57,9 +57,7 @@ namespace Prism::Resources
             VkDeviceSize       size,
             VkBufferUsageFlags usage,
             VkDeviceSize       minAlignment,
-            VmaMemoryUsage     memoryUsage = VMA_MEMORY_USAGE_AUTO) :
-            buffer(VK_NULL_HANDLE),
-            bufferSize(size), allocation(VK_NULL_HANDLE), allocator(allocator)
+            VmaMemoryUsage     memoryUsage = VMA_MEMORY_USAGE_AUTO) : bufferSize(size), allocator(allocator)
         {
             VkBufferCreateInfo bufferInfo{};
             bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
