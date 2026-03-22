@@ -16,6 +16,16 @@ namespace Prism::Resources
         VkBufferCopy region;
     };
 
+    struct PendingImageCopy
+    {
+        VkImage           destination;
+        VkBufferImageCopy region;
+
+        // VkImageMemoryBarrier before
+        // VkImageMemoryBarrier after
+        // We could create a resource, that will also contain src stage and dst stage
+    };
+
     struct VkStagingBufferResource : ResourceImpl<VkStagingBufferResource>
     {
         VkStagingBufferResource(VmaAllocator allocator);
@@ -30,19 +40,24 @@ namespace Prism::Resources
 
         void Copy(VkBuffer destination, void* data, size_t size, size_t offset = 0);
 
+        void CopyToImage(VkImage destination, void* data, size_t size, uint32_t width, uint32_t height);
+
         void CopyImmediately(VkCommandBuffer commandBuffer, VmaAllocation destinationAllocation, void* data, size_t size);
 
         void Commit(VkCommandBuffer commandBuffer);
 
     private:
+        void checkIfResizeIsNeeded(size_t additionalSize = 0);
+
         static constexpr const VkDeviceSize INITIAL_SIZE = 10000;
         friend void                         swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept;
 
-        VmaAllocator allocator = VK_NULL_HANDLE;
+        VmaAllocator _allocator = VK_NULL_HANDLE;
 
-        Resources::VkBufferResource<> stagingBuffer     = {};
-        size_t                        currentlyUtilized = 0;
+        Resources::VkBufferResource<> _stagingBuffer     = {};
+        size_t                        _currentlyUtilized = 0;
 
-        std::vector<PendingCopy> pendingCopies = {};
+        std::vector<PendingCopy>      _pendingCopies      = {};
+        std::vector<PendingImageCopy> _pendingImageCopies = {};
     };
 } // namespace Prism::Resources

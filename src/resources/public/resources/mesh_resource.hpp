@@ -8,6 +8,7 @@
 
 #include "resources/resource.hpp"
 #include "resources/vulkan/vk_buffer_resource.hpp"
+#include "resources/vulkan/vk_texture_resource.hpp"
 
 namespace Prism::Resources
 {
@@ -28,7 +29,11 @@ namespace Prism::Resources
             uint32_t idx;
         };
 
-        MeshResource(std::string name, Resources::VkBufferResource<Vertex> vertexBuffer, Resources::VkBufferResource<Index> indexBuffer);
+        MeshResource(
+            std::string                                 name,
+            Resources::VkBufferResource<Vertex>         vertexBuffer,
+            Resources::VkBufferResource<Index>          indexBuffer,
+            std::optional<Resources::VkTextureResource> texture = std::nullopt);
 
         ~MeshResource() = default;
 
@@ -42,6 +47,8 @@ namespace Prism::Resources
 
         Resources::VkBufferResource<Index>& GetIndexBuffer() { return _indexBuffer; }
 
+        std::optional<Resources::VkTextureResource>& GetTexture() { return _texture; }
+
         const std::string& GetName() const { return _name; }
 
         VkFormat    GetVertexType() const { return VERTEX_TYPE; }
@@ -52,8 +59,9 @@ namespace Prism::Resources
     private:
         std::string _name = "None";
 
-        Resources::VkBufferResource<Vertex> _vertexBuffer = {};
-        Resources::VkBufferResource<Index>  _indexBuffer = {};
+        Resources::VkBufferResource<Vertex>         _vertexBuffer = {};
+        Resources::VkBufferResource<Index>          _indexBuffer  = {};
+        std::optional<Resources::VkTextureResource> _texture      = std::nullopt;
     };
 
 }; // namespace Prism::Resources

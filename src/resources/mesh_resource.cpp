@@ -2,19 +2,22 @@
 
 namespace Prism::Resources
 {
-    MeshResource::MeshResource(std::string name, Resources::VkBufferResource<Vertex> vertexBuffer, Resources::VkBufferResource<Index> indexBuffer) :
-        _name(std::move(name)), _vertexBuffer(std::move(vertexBuffer)), _indexBuffer(std::move(indexBuffer))
+    MeshResource::MeshResource(
+        std::string                                 name,
+        Resources::VkBufferResource<Vertex>         vertexBuffer,
+        Resources::VkBufferResource<Index>          indexBuffer,
+        std::optional<Resources::VkTextureResource> texture) :
+        _name(std::move(name)),
+        _vertexBuffer(std::move(vertexBuffer)), _indexBuffer(std::move(indexBuffer)), _texture(std::move(texture))
     {}
 
     MeshResource::MeshResource(MeshResource&& other)
     {
-        using std::swap;
         swap(*this, other);
     }
 
     MeshResource& MeshResource::operator=(MeshResource&& other)
     {
-        using std::swap;
         swap(*this, other);
         return *this;
     }
@@ -25,5 +28,6 @@ namespace Prism::Resources
         swap(lhs._name, rhs._name);
         swap(lhs._vertexBuffer, rhs._vertexBuffer);
         swap(lhs._indexBuffer, rhs._indexBuffer);
+        swap(lhs._texture, rhs._texture);
     }
 } // namespace Prism::Resources

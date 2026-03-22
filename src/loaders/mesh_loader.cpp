@@ -1,8 +1,10 @@
 #include "loaders/mesh_loader.hpp"
 
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+#include "assimp/scene.h"
+
+#include "stb_image.h"
 
 #include <iostream>
 #include <filesystem>
@@ -70,6 +72,12 @@ namespace Prism::Loaders
                     vert.position = {transformedPos.x, transformedPos.y, transformedPos.z};
                     vert.normal   = {mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z};
 
+                    if (mesh->mTextureCoords[0]) {
+                        vert.textureUV = {mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y};
+                    } else {
+                        vert.textureUV = {0.0f, 0.0f};
+                    }
+
                     vertices.push_back(std::move(vert));
                 }
 
@@ -90,6 +98,23 @@ namespace Prism::Loaders
             }
         }
 
+        std::optional<std::string> processTexture(const aiScene* scene)
+        {
+            if (scene->mNumMaterials == 0) {
+                return std::nullopt;
+            }
+
+            for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
+                if (scene->mMaterials[i]->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
+                    aiString texturePath;
+                    scene->mMaterials[i]->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
+                    return std::string(texturePath.C_Str());
+                }
+            }
+
+            return std::nullopt;
+        }
+
         std::optional<MeshDescriptor> loadModel(Assimp::Importer& importer, const std::string& path)
         {
             const aiScene* scene = importer.ReadFile(path, MODELS_LOADING_FLAGS);
@@ -99,13 +124,102 @@ namespace Prism::Loaders
                 return std::nullopt;
             }
 
-            std::vector<Vertex> vertices;
-            std::vector<Index>  indices;
+            std::vector<Vertex> vertices     = {};
+            std::vector<Index>  indices      = {};
             size_t              vertexOffset = 0;
 
             processNode(scene->mRootNode, scene, glm::mat4(1.0f), vertices, indices, vertexOffset);
 
-            return MeshDescriptor{.vertices = std::move(vertices), .indices = std::move(indices)};
+            auto texturePath = processTexture(scene);
+
+            return MeshDescriptor{.vertices = std::move(vertices), .indices = std::move(indices), .texturePath = std::move(texturePath)};
+        }
+
+        std::optional<Resources::VkTextureResource>
+        loadTexture(Resources::VulkanResource& vulkanResource, Resources::VkStagingBufferResource& stagingBuffer, const std::optional<std::string>& pathOpt)
+        {
+            if (!pathOpt) {
+                return std::nullopt;
+            }
+            auto& path = *pathOpt;
+
+            int      width, height, channels;
+            stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+            if (!data) {
+                std::cerr << "Failed to load texture: " << path << std::endl;
+                return std::nullopt;
+            }
+
+            const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width * height * 4); // RGBA = 4 bytes
+
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+            imageInfo.extent        = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
+            imageInfo.mipLevels     = 1;
+            imageInfo.arrayLayers   = 1;
+            imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+            imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+            imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+
+            VmaAllocationCreateInfo imageAllocInfo{};
+            imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+            VkImage       textureImage      = VK_NULL_HANDLE;
+            VmaAllocation textureAllocation = VK_NULL_HANDLE;
+            if (vmaCreateImage(vulkanResource.GetAllocator(), &imageInfo, &imageAllocInfo, &textureImage, &textureAlloc, nullptr) != VK_SUCCESS) {
+                stbi_image_free(data);
+                return std::nullopt;
+            }
+
+            // Barrier resource creation, for stagingBuffer.CopyToImage()
+
+            // Copy data to image
+
+            // Barrier resource creation, for stagingBuffer.CopyToImage()
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image            = textureImage;
+            viewInfo.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format           = VK_FORMAT_R8G8B8A8_SRGB;
+            viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+            VkImageView imageView = VK_NULL_HANDLE;
+            if (vkCreateImageView(vulkanResource.GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+                vmaDestroyImage(vulkanResource.GetAllocator(), textureImage, textureAllocation);
+                return std::nullopt;
+            }
+
+            // TODO: Add support for mip mapping.
+            VkSamplerCreateInfo samplerInfo{};
+            samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            samplerInfo.magFilter               = VK_FILTER_LINEAR;
+            samplerInfo.minFilter               = VK_FILTER_LINEAR;
+            samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.anisotropyEnable        = VK_FALSE;
+            samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+            samplerInfo.unnormalizedCoordinates = VK_FALSE;
+            samplerInfo.compareEnable           = VK_FALSE;
+            samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.minLod                  = 0.0f;
+            samplerInfo.maxLod                  = 0.0f;
+
+            VkSampler sampler = VK_NULL_HANDLE;
+            if (vkCreateSampler(vulkanResource.GetDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+                vkDestroyImageView(vulkanResource.GetDevice(), imageView, nullptr);
+                vmaDestroyImage(vulkanResource.GetAllocator(), textureImage, textureAllocation);
+                return std::nullopt;
+            }
+
+            stbi_image_free(data);
+
+            return texture;
         }
     } // namespace
 
@@ -119,7 +233,12 @@ namespace Prism::Loaders
             return std::nullopt;
         }
 
-        auto&                               loadedModelDescriptor = *loadedModelDescriptorOpt;
+        auto& loadedModelDescriptor = *loadedModelDescriptorOpt;
+        if (loadedModelDescriptor.vertices.empty() || loadedModelDescriptor.indices.empty()) {
+            std::cerr << "Loaded mesh has no vertices or indices" << std::endl;
+            return std::nullopt;
+        }
+
         Resources::VkBufferResource<Vertex> vertexBuffer(
             vulkanResource.GetVmaAllocator(),
             loadedModelDescriptor.vertices.size() * sizeof(Vertex),
@@ -134,10 +253,12 @@ namespace Prism::Loaders
         stagingBuffer.Copy(vertexBuffer.GetBuffer(), loadedModelDescriptor.vertices.data(), vertexBuffer.GetBufferSize());
         stagingBuffer.Copy(indexBuffer.GetBuffer(), loadedModelDescriptor.indices.data(), indexBuffer.GetBufferSize());
 
+        auto textureOpt = loadTexture(vulkanResource, stagingBuffer, loadedModelDescriptor.texturePath);
+
         std::filesystem::path filePath(path);
         auto                  fileName = filePath.stem().string();
 
-        Resources::MeshResource meshResource{fileName, std::move(vertexBuffer), std::move(indexBuffer)};
+        Resources::MeshResource meshResource{fileName, std::move(vertexBuffer), std::move(indexBuffer), std::move(textureOpt)};
 
         return {std::make_unique<Resources::MeshResource>(std::move(meshResource))};
     }
