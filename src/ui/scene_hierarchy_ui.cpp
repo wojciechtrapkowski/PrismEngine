@@ -179,7 +179,6 @@ namespace Prism::UI
 
             auto& name = registry.get<Components::Name>(entity);
 
-            ImGui::SameLine();
             ImGui::SetKeyboardFocusHere();
 
             bool confirmRename = false;
@@ -212,7 +211,7 @@ namespace Prism::UI
         }
     } // namespace
 
-    SceneHierarchyUI::SceneHierarchyUI(Resources::ContextResources& contextResources) : _contextResources(contextResources){};
+    SceneHierarchyUI::SceneHierarchyUI(Resources::ContextResources& contextResources) : _contextResources(contextResources) {};
 
     void SceneHierarchyUI::Update(float deltaTime, Resources::Scene& scene)
     {
