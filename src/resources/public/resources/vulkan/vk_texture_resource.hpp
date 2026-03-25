@@ -10,7 +10,7 @@ namespace Prism::Resources
     struct VkTextureResource : ResourceImpl<VkTextureResource>
     {
         VkTextureResource(VkDevice device, VkImage image, VkImageView imageView, VkSampler sampler);
-        ~VkTextureResource() = default;
+        ~VkTextureResource();
 
         VkTextureResource(VkTextureResource&& other) noexcept;
 

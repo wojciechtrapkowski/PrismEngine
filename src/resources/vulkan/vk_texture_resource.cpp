@@ -6,6 +6,23 @@ namespace Prism::Resources
         device(device), image(image), imageView(imageView), sampler(sampler)
     {}
 
+    VkTextureResource::~VkTextureResource()
+    {
+        if (device == VK_NULL_HANDLE) {
+            return;
+        }
+
+        if (sampler != VK_NULL_HANDLE) {
+            vkDestroySampler(device, sampler, nullptr);
+        }
+        if (imageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        if (image != VK_NULL_HANDLE) {
+            vkDestroyImage(device, image, nullptr);
+        }
+    }
+
     VkTextureResource::VkTextureResource(VkTextureResource&& other) noexcept
     {
         swap(*this, other);
