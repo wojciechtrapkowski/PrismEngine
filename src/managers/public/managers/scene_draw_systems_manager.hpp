@@ -1,5 +1,7 @@
 #pragma once
 
+#include "systems/mesh_loading_system.hpp"
+
 #include "systems/gizmo_drawing_system.hpp"
 #include "systems/mesh_drawing_system.hpp"
 #include "systems/present_system.hpp"
@@ -28,12 +30,13 @@ namespace Prism::Managers
         SceneDrawSystemsManager(SceneDrawSystemsManager&&)            = delete;
         SceneDrawSystemsManager& operator=(SceneDrawSystemsManager&&) = delete;
 
-        void Update(float deltaTime, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
+        void Update(float deltaTime, Resources::Scene& scene);
 
     private:
         inline static const size_t   RENDER_TARGET_RESOURCE_ID = std::hash<std::string_view>{}("SceneDrawSystemsManager/RenderTargetResource");
         Resources::ContextResources& _contextResources;
 
+        Systems::MeshLoadingSystem    _meshLoadingSystem;
         Systems::ScreenClearingSystem _screenClearingSystem;
         Systems::MeshDrawingSystem    _meshDrawingSystem;
         Systems::GizmoDrawingSystem   _gizmoDrawingSystem;
@@ -44,6 +47,8 @@ namespace Prism::Managers
         std::vector<Resources::VkCommandPoolResource> _commandPools     = {};
         std::vector<VkSemaphore>                      _updateSemaphores = {};
         std::vector<VkSemaphore>                      _renderSemaphores = {};
+
+        Resources::VkStagingBufferResource _stagingBuffer;
     };
 
 } // namespace Prism::Managers

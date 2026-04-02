@@ -26,7 +26,7 @@ namespace Prism::Systems
         m_onKeyPressedConnection = m_contextResources.GetDispatcher().sink<Events::KeyPressEvent>().connect<&GizmoDrawingSystem::onKeyPressed>(this);
     };
 
-    void GizmoDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
+    void GizmoDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

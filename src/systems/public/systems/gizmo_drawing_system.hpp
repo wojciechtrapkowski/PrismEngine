@@ -3,6 +3,7 @@
 #include "resources/context_resources.hpp"
 #include "resources/render_target_resource.hpp"
 #include "resources/scene.hpp"
+#include "resources/vulkan/vk_staging_buffer_resource.hpp"
 
 #include "events/move_events.hpp"
 
@@ -20,7 +21,7 @@ namespace Prism::Systems
         GizmoDrawingSystem(GizmoDrawingSystem&& other)            = delete;
         GizmoDrawingSystem& operator=(GizmoDrawingSystem&& other) = delete;
 
-        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene);
+        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 

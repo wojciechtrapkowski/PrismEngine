@@ -138,7 +138,7 @@ namespace Prism::Loaders
         }
 
         std::optional<Resources::VkTextureResource>
-        loadTexture(Resources::VulkanResource& vulkanResource, Resources::VkStagingBufferResource& stagingBuffer, const std::optional<std::string>& pathOpt)
+        loadTexture(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::optional<std::string>& pathOpt)
         {
             if (!pathOpt) {
                 return std::nullopt;
@@ -177,22 +177,37 @@ namespace Prism::Loaders
                 return std::nullopt;
             }
 
-            // Barrier resource creation, for stagingBuffer.CopyToImage()
+            Resources::VkImageResource imageResource(vulkanResource.GetVmaAllocator(), textureAllocation, textureImage);
 
-            // Copy data to image
+            VkImageMemoryBarrier barrierToTransfer{};
+            barrierToTransfer.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrierToTransfer.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrierToTransfer.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrierToTransfer.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrierToTransfer.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrierToTransfer.image                           = imageResource.GetImage();
+            barrierToTransfer.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrierToTransfer.subresourceRange.baseMipLevel   = 0;
+            barrierToTransfer.subresourceRange.levelCount     = 1;
+            barrierToTransfer.subresourceRange.baseArrayLayer = 0;
+            barrierToTransfer.subresourceRange.layerCount     = 1;
+            barrierToTransfer.srcAccessMask                   = 0;
+            barrierToTransfer.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-            // Barrier resource creation, for stagingBuffer.CopyToImage()
+            vkCmdPipelineBarrier(
+                commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrierToTransfer);
+
+            stagingBuffer.CopyToImage(imageResource.GetImage(), data, imageSize, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image            = textureImage;
+            viewInfo.image            = imageResource.GetImage();
             viewInfo.viewType         = VK_IMAGE_VIEW_TYPE_2D;
             viewInfo.format           = VK_FORMAT_R8G8B8A8_SRGB;
             viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
             VkImageView imageView = VK_NULL_HANDLE;
             if (vkCreateImageView(vulkanResource.GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-                vmaDestroyImage(vulkanResource.GetVmaAllocator(), textureImage, textureAllocation);
                 return std::nullopt;
             }
 
@@ -215,19 +230,19 @@ namespace Prism::Loaders
             VkSampler sampler = VK_NULL_HANDLE;
             if (vkCreateSampler(vulkanResource.GetDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
                 vkDestroyImageView(vulkanResource.GetDevice(), imageView, nullptr);
-                vmaDestroyImage(vulkanResource.GetVmaAllocator(), textureImage, textureAllocation);
                 return std::nullopt;
             }
 
             stbi_image_free(data);
 
-            return std::nullopt;
-            // return texture;
+            auto textureResource = Resources::VkTextureResource(vulkanResource.GetDevice(), std::move(imageResource), imageView, sampler);
+
+            return textureResource;
         }
     } // namespace
 
     MeshLoader::result_type
-    MeshLoader::operator()(Resources::VulkanResource& vulkanResource, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const
+    MeshLoader::operator()(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const
     {
         Assimp::Importer importer;
 
@@ -261,7 +276,12 @@ namespace Prism::Loaders
         stagingBuffer.Copy(vertexBuffer.GetBuffer(), loadedModelDescriptor.vertices.data(), vertexBuffer.GetBufferSize());
         stagingBuffer.Copy(indexBuffer.GetBuffer(), loadedModelDescriptor.indices.data(), indexBuffer.GetBufferSize());
 
-        auto textureOpt = loadTexture(vulkanResource, stagingBuffer, loadedModelDescriptor.texturePath);
+        // Texture path is relative, so we need to rebuild it.
+        if (loadedModelDescriptor.texturePath) {
+            std::filesystem::path absolutePath = std::filesystem::path(path).parent_path() / std::filesystem::path(*loadedModelDescriptor.texturePath);
+            loadedModelDescriptor.texturePath  = absolutePath.string();
+        }
+        auto textureOpt = loadTexture(vulkanResource, commandBuffer, stagingBuffer, loadedModelDescriptor.texturePath);
 
         std::filesystem::path filePath(path);
         auto                  fileName = filePath.stem().string();

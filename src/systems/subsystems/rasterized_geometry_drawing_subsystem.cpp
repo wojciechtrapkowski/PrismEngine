@@ -28,13 +28,18 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
+        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 1024;
+
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {
             VkDescriptorPool descriptorPool;
 
-            std::array<VkDescriptorPoolSize, 1> poolSizes{};
+            std::array<VkDescriptorPoolSize, 2> poolSizes{};
             poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             poolSizes[0].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
+
+            poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            poolSizes[1].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT * MAX_NUMBER_OF_TEXTURES;
 
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -60,12 +65,31 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             uboBinding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             uboBinding.pImmutableSamplers = nullptr;
 
-            std::array<VkDescriptorSetLayoutBinding, 1> bindings = {uboBinding};
+            VkDescriptorSetLayoutBinding samplerBinding{};
+            samplerBinding.binding            = 1;
+            samplerBinding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            samplerBinding.descriptorCount    = MAX_NUMBER_OF_TEXTURES;
+            samplerBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+            samplerBinding.pImmutableSamplers = nullptr;
+
+            std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboBinding, samplerBinding};
 
             VkDescriptorSetLayoutCreateInfo layoutInfo{};
             layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
             layoutInfo.pBindings    = bindings.data();
+
+            VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+            bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+
+            std::array<VkDescriptorBindingFlags, 2> bindingFlags = {
+                0,                                        // binding 0 (UBO) - no special flags
+                VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT // binding 1 (samplers) - we won't use all of them.
+            };
+            bindingFlagsInfo.bindingCount  = static_cast<uint32_t>(bindingFlags.size());
+            bindingFlagsInfo.pBindingFlags = bindingFlags.data();
+
+            layoutInfo.pNext = &bindingFlagsInfo;
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
                 throw std::runtime_error("failed to create descriptor set layout");
@@ -102,7 +126,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             VkPushConstantRange pushRange{};
             pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
             pushRange.offset     = 0;
-            pushRange.size       = sizeof(glm::mat4);
+            pushRange.size       = sizeof(RasterizedGeometryDrawingSubsystem::PushConstants);
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -259,12 +283,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             return pipeline;
         }
 
-        void updateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkBuffer commonUniformBuffer)
+        void
+        updateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkBuffer commonUniformBuffer, std::vector<VkDescriptorImageInfo>& textureImageInfos)
         {
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = commonUniformBuffer;
             bufferInfo.offset = 0;
             bufferInfo.range  = VK_WHOLE_SIZE;
+
+            std::vector<VkWriteDescriptorSet> descriptorWrites = {};
 
             VkWriteDescriptorSet descriptorWrite{};
             descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -274,14 +301,27 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrite.descriptorCount = 1;
             descriptorWrite.pBufferInfo     = &bufferInfo;
+            descriptorWrites.push_back(descriptorWrite);
 
-            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+            if (!textureImageInfos.empty()) {
+                VkWriteDescriptorSet samplerWrite{};
+                samplerWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                samplerWrite.dstSet          = descriptorSet;
+                samplerWrite.dstBinding      = 1;
+                samplerWrite.dstArrayElement = 0;
+                samplerWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                samplerWrite.descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
+                samplerWrite.pImageInfo      = textureImageInfos.data();
+                descriptorWrites.push_back(samplerWrite);
+            }
+
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         };
     } // namespace
 
-    RasterizedGeometryDrawingSubsystem::RasterizedGeometryDrawingSubsystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources)
+    RasterizedGeometryDrawingSubsystem::RasterizedGeometryDrawingSubsystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
-        auto&    vulkanResource = m_contextResources.GetVulkanResource();
+        auto&    vulkanResource = _contextResources.GetVulkanResource();
         VkDevice device         = vulkanResource.GetDevice();
 
         descriptorPool      = createDescriptorPool(device);
@@ -293,7 +333,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
     RasterizedGeometryDrawingSubsystem::~RasterizedGeometryDrawingSubsystem()
     {
-        auto&    vulkanResource = m_contextResources.GetVulkanResource();
+        auto&    vulkanResource = _contextResources.GetVulkanResource();
         VkDevice device         = vulkanResource.GetDevice();
 
         if (pipeline != VK_NULL_HANDLE) {
@@ -314,7 +354,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
-    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene) {
+    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene){
 
     };
 
@@ -324,8 +364,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         auto& registry    = scene.GetRegistry();
         auto& meshStorage = scene.GetMeshStorage();
 
-        auto& resourceStorage = m_contextResources.GetResourceStorage();
-        auto& vulkanResource  = m_contextResources.GetVulkanResource();
+        auto& resourceStorage = _contextResources.GetResourceStorage();
+        auto& vulkanResource  = _contextResources.GetVulkanResource();
 
         VkRenderingAttachmentInfo colorAttachment{};
         colorAttachment.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -361,7 +401,29 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
         auto& commonUniformBuffer = commonUniformBufferOpt->get();
 
-        updateDescriptorSet(vulkanResource.GetDevice(), descriptorSets[currentFrame], commonUniformBuffer.GetBuffer());
+        auto meshTransformView = registry.view<Components::Mesh, Components::Transform>();
+
+        std::vector<VkDescriptorImageInfo> textureImageInfos;
+        textureImageInfos.reserve(meshTransformView.size_hint());
+
+        for (const auto meshEntity : meshTransformView) {
+            const auto& meshResourceId = meshTransformView.get<Components::Mesh>(meshEntity).resourceId;
+
+            auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
+            if (!meshOpt) {
+                continue;
+            }
+            auto& mesh = meshOpt->get();
+
+            if (mesh.GetTexture().has_value()) {
+                VkDescriptorImageInfo imageInfo{};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView   = mesh.GetTexture()->GetImageView();
+                imageInfo.sampler     = mesh.GetTexture()->GetSampler();
+                textureImageInfos.push_back(imageInfo);
+            }
+        }
+        updateDescriptorSet(vulkanResource.GetDevice(), descriptorSets[currentFrame], commonUniformBuffer.GetBuffer(), textureImageInfos);
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
@@ -382,9 +444,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-        auto meshTransformView = registry.view<Components::Mesh, Components::Transform>();
-
-        for (const auto& meshEntity : meshTransformView) {
+        uint32_t textureIndex = 0;
+        for (const auto meshEntity : meshTransformView) {
             const auto& meshResourceId = meshTransformView.get<Components::Mesh>(meshEntity).resourceId;
 
             const auto& transform = meshTransformView.get<Components::Transform>(meshEntity).transform;
@@ -400,9 +461,23 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(commandBuffer, mesh.GetIndexBuffer().GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-            vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), glm::value_ptr(transform));
+            PushConstants pushConstants{};
+            pushConstants.model = transform;
+
+            if (mesh.GetTexture().has_value()) {
+                if (textureIndex >= MAX_NUMBER_OF_TEXTURES) {
+                    throw std::runtime_error("Exceeded maximum number of textures supported by the shader!");
+                }
+                pushConstants.textureIndex = textureIndex;
+                textureIndex++;
+            } else {
+                pushConstants.textureIndex = -1;
+            }
+            vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
 
             vkCmdDrawIndexed(commandBuffer, mesh.GetIndexBuffer().GetElementCount(), 1, 0, 0, 0);
+
+            textureIndex++;
         }
 
         vkCmdEndRendering(commandBuffer);

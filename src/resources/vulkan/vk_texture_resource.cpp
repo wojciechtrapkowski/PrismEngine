@@ -2,24 +2,21 @@
 
 namespace Prism::Resources
 {
-    VkTextureResource::VkTextureResource(VkDevice device, VkImage image, VkImageView imageView, VkSampler sampler) :
-        device(device), image(image), imageView(imageView), sampler(sampler)
+    VkTextureResource::VkTextureResource(VkDevice device, Resources::VkImageResource imageResource, VkImageView imageView, VkSampler sampler) :
+        _device(device), _imageResource(std::move(imageResource)), _imageView(imageView), _sampler(sampler)
     {}
 
     VkTextureResource::~VkTextureResource()
     {
-        if (device == VK_NULL_HANDLE) {
+        if (_device == VK_NULL_HANDLE) {
             return;
         }
 
-        if (sampler != VK_NULL_HANDLE) {
-            vkDestroySampler(device, sampler, nullptr);
+        if (_sampler != VK_NULL_HANDLE) {
+            vkDestroySampler(_device, _sampler, nullptr);
         }
-        if (imageView != VK_NULL_HANDLE) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-        if (image != VK_NULL_HANDLE) {
-            vkDestroyImage(device, image, nullptr);
+        if (_imageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(_device, _imageView, nullptr);
         }
     }
 
@@ -40,9 +37,9 @@ namespace Prism::Resources
     {
         using std::swap;
 
-        swap(first.device, second.device);
-        swap(first.image, second.image);
-        swap(first.imageView, second.imageView);
-        swap(first.sampler, second.sampler);
+        swap(first._device, second._device);
+        swap(first._imageResource, second._imageResource);
+        swap(first._imageView, second._imageView);
+        swap(first._sampler, second._sampler);
     }
 } // namespace Prism::Resources

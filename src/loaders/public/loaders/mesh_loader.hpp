@@ -23,6 +23,6 @@ namespace Prism::Loaders
         MeshLoader(MeshLoader& other)      = delete;
         MeshLoader& operator=(MeshLoader&) = delete;
 
-        result_type operator()(Resources::VulkanResource& vulkanResource, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const;
+        result_type operator()(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const;
     };
 }; // namespace Prism::Loaders

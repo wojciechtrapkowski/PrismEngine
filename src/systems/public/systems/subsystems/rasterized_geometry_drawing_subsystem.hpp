@@ -22,8 +22,17 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 
+        struct PushConstants
+        {
+            glm::mat4 model;
+            int       textureIndex;
+        };
+
     private:
-        Resources::ContextResources& m_contextResources;
+        inline static const Resources::Resource::ID TEXTURES_SAMPLERS_BUFFER_ID =
+            std::hash<std::string_view>{}("RasterizedGeometryDrawingSubsystem/TexturesSamplersBufferId");
+
+        Resources::ContextResources& _contextResources;
 
         VkDescriptorPool             descriptorPool      = VK_NULL_HANDLE;
         VkDescriptorSetLayout        descriptorSetLayout = VK_NULL_HANDLE;

@@ -13,7 +13,8 @@ namespace Prism::Systems
 
     ScreenClearingSystem::ScreenClearingSystem(Resources::ContextResources& contextResources) : m_contextResources(contextResources){};
 
-    void ScreenClearingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
+    void
+    ScreenClearingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

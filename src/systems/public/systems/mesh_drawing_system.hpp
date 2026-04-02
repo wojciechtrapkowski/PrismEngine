@@ -24,7 +24,7 @@ namespace Prism::Systems
         MeshDrawingSystem(MeshDrawingSystem&& other)            = delete;
         MeshDrawingSystem& operator=(MeshDrawingSystem&& other) = delete;
 
-        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
+        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 

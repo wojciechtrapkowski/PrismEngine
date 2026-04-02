@@ -1,5 +1,12 @@
 #include "managers/scene_draw_systems_manager.hpp"
 
+// Testing purposes
+#include "components/transform.hpp"
+#include "components/mesh.hpp"
+#include "components/name.hpp"
+#include "components/tags.hpp"
+#include "loaders/mesh_loader.hpp"
+
 namespace Prism::Managers
 {
     namespace
@@ -35,8 +42,9 @@ namespace Prism::Managers
     } // namespace
 
     SceneDrawSystemsManager::SceneDrawSystemsManager(Resources::ContextResources& contextResources) :
-        _contextResources(contextResources), _screenClearingSystem{contextResources}, _meshDrawingSystem{contextResources}, _uiDrawingSystem{contextResources},
-        _presentSystem{contextResources}, _gizmoDrawingSystem{contextResources}
+        _contextResources(contextResources), _meshLoadingSystem{contextResources}, _screenClearingSystem{contextResources},
+        _meshDrawingSystem{contextResources}, _uiDrawingSystem{contextResources}, _presentSystem{contextResources}, _gizmoDrawingSystem{contextResources},
+        _stagingBuffer{contextResources.GetVulkanResource().GetVmaAllocator()}
     {
         auto& vulkanResource           = _contextResources.GetVulkanResource();
         auto  device                   = vulkanResource.GetDevice();
@@ -61,7 +69,7 @@ namespace Prism::Managers
         }
     }
 
-    void SceneDrawSystemsManager::Update(float deltaTime, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
+    void SceneDrawSystemsManager::Update(float deltaTime, Resources::Scene& scene)
     {
         auto& vulkanResource                = _contextResources.GetVulkanResource();
         auto& swapchainBoundResourceStorage = vulkanResource.GetSwapchainBoundStorage();
@@ -94,13 +102,15 @@ namespace Prism::Managers
         { // Update
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
 
-            stagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
+            _meshLoadingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
 
-            _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
-            _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene, stagingBuffer);
-            _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
-            _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
-            _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), scene);
+            _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+            _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+            _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+            _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+            _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+
+            _stagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;

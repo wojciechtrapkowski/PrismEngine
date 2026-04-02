@@ -1,25 +1,34 @@
 #version 450
 
-layout(set = 0, binding = 0) uniform CommonUniforms {
+layout(set = 0, binding = 0) uniform CommonUniforms
+{
     mat4 view;
     mat4 projection;
     vec4 cameraPosition;
-} commonUniforms;
+}
+commonUniforms;
 
-layout(push_constant) uniform PushConstants {
+layout(push_constant) uniform PushConstants
+{
     mat4 model;
-} pushConstants;
+    int  textureId;
+}
+pushConstants;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTextureUV;
 
 layout(location = 0) out vec3 outPosition;
-
 layout(location = 1) out vec3 outNormal;
+layout(location = 2) out vec2 outTextureUV;
+layout(location = 3) out flat int outTextureId;
 
-void main() {
-    gl_Position = commonUniforms.projection * commonUniforms.view * pushConstants.model * vec4(inPosition, 1.0);
-    outNormal = normalize(mat3(transpose(inverse(pushConstants.model))) * inNormal);
-    outPosition = vec3(pushConstants.model * vec4(inPosition, 1.0));
+void main()
+{
+    gl_Position  = commonUniforms.projection * commonUniforms.view * pushConstants.model * vec4(inPosition, 1.0);
+    outNormal    = normalize(mat3(transpose(inverse(pushConstants.model))) * inNormal);
+    outPosition  = vec3(pushConstants.model * vec4(inPosition, 1.0));
+    outTextureUV = inTextureUV;
+    outTextureId = pushConstants.textureId;
 }

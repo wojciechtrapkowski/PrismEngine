@@ -3,6 +3,7 @@
 #include "resources/context_resources.hpp"
 #include "resources/render_target_resource.hpp"
 #include "resources/scene.hpp"
+#include "resources/vulkan/vk_staging_buffer_resource.hpp"
 
 #include "ui/camera_settings_ui.hpp"
 #include "ui/main_dock_ui.hpp"
@@ -24,7 +25,7 @@ namespace Prism::Systems
         UIDrawingSystem(UIDrawingSystem&&)            = delete;
         UIDrawingSystem& operator=(UIDrawingSystem&&) = delete;
 
-        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene);
+        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene);
 
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 
