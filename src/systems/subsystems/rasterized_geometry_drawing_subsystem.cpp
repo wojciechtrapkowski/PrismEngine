@@ -28,7 +28,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
-        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 1024;
+        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 12;
 
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {
@@ -354,7 +354,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
-    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene){
+    void RasterizedGeometryDrawingSubsystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene) {
 
     };
 
@@ -476,8 +476,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
 
             vkCmdDrawIndexed(commandBuffer, mesh.GetIndexBuffer().GetElementCount(), 1, 0, 0, 0);
-
-            textureIndex++;
         }
 
         vkCmdEndRendering(commandBuffer);

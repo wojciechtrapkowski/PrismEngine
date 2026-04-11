@@ -6,6 +6,7 @@
 #include "components/name.hpp"
 #include "components/tags.hpp"
 #include "loaders/mesh_loader.hpp"
+#include <iostream>
 
 namespace Prism::Managers
 {
@@ -39,12 +40,23 @@ namespace Prism::Managers
             return pools;
         }
 
+        std::vector<Resources::VkStagingBufferResource> createStagingBuffers(VmaAllocator allocator, size_t count)
+        {
+            std::vector<Resources::VkStagingBufferResource> buffers;
+            buffers.reserve(count);
+
+            for (size_t i = 0; i < count; ++i) {
+                buffers.emplace_back(allocator);
+            }
+
+            return buffers;
+        }
+
     } // namespace
 
     SceneDrawSystemsManager::SceneDrawSystemsManager(Resources::ContextResources& contextResources) :
         _contextResources(contextResources), _meshLoadingSystem{contextResources}, _screenClearingSystem{contextResources},
-        _meshDrawingSystem{contextResources}, _uiDrawingSystem{contextResources}, _presentSystem{contextResources}, _gizmoDrawingSystem{contextResources},
-        _stagingBuffer{contextResources.GetVulkanResource().GetVmaAllocator()}
+        _meshDrawingSystem{contextResources}, _uiDrawingSystem{contextResources}, _presentSystem{contextResources}, _gizmoDrawingSystem{contextResources}
     {
         auto& vulkanResource           = _contextResources.GetVulkanResource();
         auto  device                   = vulkanResource.GetDevice();
@@ -53,8 +65,10 @@ namespace Prism::Managers
 
         _commandPools = createCommandPools(device, graphicsQueueFamilyIndex, framesInFlight);
 
-        _updateSemaphores = createSemaphores(device, framesInFlight);
-        _renderSemaphores = createSemaphores(device, framesInFlight);
+        _updateSemaphores       = createSemaphores(device, framesInFlight);
+        _renderSemaphores       = createSemaphores(device, framesInFlight);
+
+        _stagingBuffers = createStagingBuffers(vulkanResource.GetVmaAllocator(), framesInFlight);
     }
 
     SceneDrawSystemsManager::~SceneDrawSystemsManager()
@@ -67,6 +81,9 @@ namespace Prism::Managers
         for (auto& sem : _renderSemaphores) {
             vkDestroySemaphore(vulkanResource.GetDevice(), sem, nullptr);
         }
+        for (auto& sem : _presentReadySemaphores) {
+            vkDestroySemaphore(vulkanResource.GetDevice(), sem, nullptr);
+        }
     }
 
     void SceneDrawSystemsManager::Update(float deltaTime, Resources::Scene& scene)
@@ -74,16 +91,20 @@ namespace Prism::Managers
         auto& vulkanResource                = _contextResources.GetVulkanResource();
         auto& swapchainBoundResourceStorage = vulkanResource.GetSwapchainBoundStorage();
 
+        auto& currentUpdateSemaphore  = _updateSemaphores.at(vulkanResource.GetCurrentFrameOffset());
+        auto& currentRenderSemaphore  = _renderSemaphores.at(vulkanResource.GetCurrentFrameOffset());
+
+        auto imageAcquiredSemaphore = vulkanResource.GetCurrentImageAcquiredSemaphore();
+
+        auto currentFence = vulkanResource.GetCurrentFence();
+
         auto& currentCommandPoolResource = _commandPools.at(vulkanResource.GetCurrentFrameOffset());
-        auto& currentUpdateSemaphore     = _updateSemaphores.at(vulkanResource.GetCurrentFrameOffset());
-        auto& currentRenderSemaphore     = _renderSemaphores.at(vulkanResource.GetCurrentFrameOffset());
-        auto  imageAcquiredSemaphore     = vulkanResource.GetCurrentImageAcquiredSemaphore();
-        auto  currentFence               = vulkanResource.GetCurrentFence();
+        auto& currentStagingBuffer       = _stagingBuffers.at(vulkanResource.GetCurrentFrameOffset());
 
         currentCommandPoolResource.Reset();
 
         auto renderTargetOpt =
-            swapchainBoundResourceStorage.Get<Resources::RenderTargetResource>(RENDER_TARGET_RESOURCE_ID, vulkanResource.GetCurrentImageIndex());
+            swapchainBoundResourceStorage.Get<Resources::RenderTargetResource>(RENDER_TARGET_RESOURCE_ID, vulkanResource.GetCurrentFrameOffset());
         if (!renderTargetOpt) {
             uint32_t flags = 0;
             flags |= Resources::RenderTargetResource::RenderTargetCreationFlags::COLOR_ATTACHMENT;
@@ -93,24 +114,22 @@ namespace Prism::Managers
                 vulkanResource.GetDevice(), vulkanResource.GetVmaAllocator(), vulkanResource.GetSwapchainExtent(), flags);
 
             swapchainBoundResourceStorage.Insert<Resources::RenderTargetResource>(
-                RENDER_TARGET_RESOURCE_ID, std::move(renderTarget), vulkanResource.GetCurrentImageIndex());
+                RENDER_TARGET_RESOURCE_ID, std::move(renderTarget), vulkanResource.GetCurrentFrameOffset());
             renderTargetOpt =
-                swapchainBoundResourceStorage.Get<Resources::RenderTargetResource>(RENDER_TARGET_RESOURCE_ID, vulkanResource.GetCurrentImageIndex());
+                swapchainBoundResourceStorage.Get<Resources::RenderTargetResource>(RENDER_TARGET_RESOURCE_ID, vulkanResource.GetCurrentFrameOffset());
         }
         auto& renderTarget = renderTargetOpt->get();
 
         { // Update
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
 
-            _meshLoadingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
+            _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
+            _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
+            _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
+            _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
+            _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
 
-            _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
-            _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
-            _uiDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
-            _gizmoDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
-            _presentSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), _stagingBuffer, scene);
-
-            _stagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
+            currentStagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -138,7 +157,7 @@ namespace Prism::Managers
             VkSubmitInfo submitInfo{};
             submitInfo.sType                      = VK_STRUCTURE_TYPE_SUBMIT_INFO;
             VkSemaphore          waitSemaphores[] = {currentUpdateSemaphore, imageAcquiredSemaphore};
-            VkPipelineStageFlags waitStages[]     = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            VkPipelineStageFlags waitStages[]     = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
             submitInfo.waitSemaphoreCount         = 2;
             submitInfo.pWaitSemaphores            = waitSemaphores;
             submitInfo.pWaitDstStageMask          = waitStages;

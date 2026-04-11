@@ -219,6 +219,7 @@ namespace Prism::Loaders
             auto additionalDeviceExtensions = getAdditionalDeviceExtensions(physicalDevice);
 
             VkPhysicalDeviceFeatures deviceFeatures{};
+            deviceFeatures.shaderInt64 = VK_TRUE;
 
             VkPhysicalDeviceVulkan12Features vulkan12Features{};
             vulkan12Features.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -227,6 +228,8 @@ namespace Prism::Loaders
             vulkan12Features.runtimeDescriptorArray                    = VK_TRUE;
             vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
             vulkan12Features.descriptorBindingPartiallyBound           = VK_TRUE;
+            vulkan12Features.scalarBlockLayout                         = VK_TRUE; // scalar layout qualifier
+            vulkan12Features.descriptorIndexing                        = VK_TRUE; // unbounded arrays
 
             VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
             dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;

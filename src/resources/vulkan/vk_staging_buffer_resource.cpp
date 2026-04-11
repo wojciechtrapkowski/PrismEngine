@@ -84,7 +84,7 @@ namespace Prism::Resources
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        if (_pendingCopies.empty()) {
+        if (_pendingCopies.empty() && _pendingImageCopies.empty()) {
             vkEndCommandBuffer(commandBuffer);
             return;
         }
@@ -95,6 +95,24 @@ namespace Prism::Resources
 
         for (const auto& pending : _pendingImageCopies) {
             vkCmdCopyBufferToImage(commandBuffer, _stagingBuffer.GetBuffer(), pending.destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &pending.region);
+
+            VkImageMemoryBarrier barrierToShader{};
+            barrierToShader.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrierToShader.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrierToShader.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrierToShader.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrierToShader.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrierToShader.image                           = pending.destination;
+            barrierToShader.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrierToShader.subresourceRange.baseMipLevel   = 0;
+            barrierToShader.subresourceRange.levelCount     = 1;
+            barrierToShader.subresourceRange.baseArrayLayer = 0;
+            barrierToShader.subresourceRange.layerCount     = 1;
+            barrierToShader.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrierToShader.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(
+                commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrierToShader);
         }
 
         _pendingCopies.clear();

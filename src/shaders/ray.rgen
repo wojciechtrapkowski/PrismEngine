@@ -9,8 +9,8 @@ layout(set = 0, binding = 0) uniform CommonUniforms
 }
 commonUniforms;
 
-layout(set = 0, binding = 1) uniform accelerationStructureEXT tlas;
-layout(set = 0, binding = 2, rgba8) uniform image2D outputImage;
+layout(set = 0, binding = 3) uniform accelerationStructureEXT tlas;
+layout(set = 0, binding = 4, rgba8) uniform image2D outputImage;
 
 layout(location = 0) rayPayloadEXT vec3 payload;
 

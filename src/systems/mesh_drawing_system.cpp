@@ -40,6 +40,21 @@ namespace Prism::Systems
             systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
         }
 
+        auto meshTransformView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
+        bool isEmptyScene      = [&]() {
+            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
+                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }();
+        if (isEmptyScene) {
+            vkEndCommandBuffer(commandBuffer);
+            return;
+        }
+
         _rasterizedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene);
         _raytracedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene, stagingBuffer);
 

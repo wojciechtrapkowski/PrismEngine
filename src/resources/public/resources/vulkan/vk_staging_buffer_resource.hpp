@@ -49,7 +49,7 @@ namespace Prism::Resources
     private:
         void checkIfResizeIsNeeded(size_t additionalSize = 0);
 
-        static constexpr const VkDeviceSize INITIAL_SIZE = 10000;
+        static constexpr const VkDeviceSize INITIAL_SIZE = 1024 * 1024 * 512; // 0.5 GB
         friend void                         swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept;
 
         VmaAllocator _allocator = VK_NULL_HANDLE;

@@ -35,7 +35,7 @@ namespace Prism::Systems
         static bool isFirstFrame = true;
         if (isFirstFrame) {
             Loaders::MeshLoader meshLoader;
-            auto                backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), commandBuffer, stagingBuffer, "models/backpack.obj");
+            auto backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), commandBuffer, stagingBuffer, "models/backpack-texture/scene.gltf");
             if (!backpackModelOpt) {
                 std::cerr << "Couldn't load backpack model!" << std::endl;
             } else {
@@ -69,6 +69,7 @@ namespace Prism::Systems
                 registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
                 registry.emplace<Components::Name>(entity, "Cube");
             }
+
             isFirstFrame = false;
         }
 

@@ -93,8 +93,8 @@ namespace Prism::Systems
             barrierToPresent.dstAccessMask                   = 0;
             barrierToPresent.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             barrierToPresent.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            barrierToPresent.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            barrierToPresent.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrierToPresent.srcQueueFamilyIndex             = m_contextResources.GetVulkanResource().GetGraphicsQueueFamilyIndex();
+            barrierToPresent.dstQueueFamilyIndex             = m_contextResources.GetVulkanResource().GetPresentationQueueFamilyIndex();
             barrierToPresent.image                           = dstImage;
             barrierToPresent.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
             barrierToPresent.subresourceRange.baseMipLevel   = 0;

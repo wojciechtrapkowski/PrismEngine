@@ -104,7 +104,7 @@ namespace Prism::Resources
 
             if (index < storedResources.size()) {
                 if (storedResources[index] == nullptr) {
-                    throw std::runtime_error("It shouldn't be that way - check that!");
+                    return std::nullopt;
                 }
                 return static_cast<T&>(*storedResources[index]);
             }
