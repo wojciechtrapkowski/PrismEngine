@@ -65,8 +65,8 @@ namespace Prism::Managers
 
         _commandPools = createCommandPools(device, graphicsQueueFamilyIndex, framesInFlight);
 
-        _updateSemaphores       = createSemaphores(device, framesInFlight);
-        _renderSemaphores       = createSemaphores(device, framesInFlight);
+        _updateSemaphores = createSemaphores(device, framesInFlight);
+        _renderSemaphores = createSemaphores(device, framesInFlight);
 
         _stagingBuffers = createStagingBuffers(vulkanResource.GetVmaAllocator(), framesInFlight);
     }
@@ -91,8 +91,8 @@ namespace Prism::Managers
         auto& vulkanResource                = _contextResources.GetVulkanResource();
         auto& swapchainBoundResourceStorage = vulkanResource.GetSwapchainBoundStorage();
 
-        auto& currentUpdateSemaphore  = _updateSemaphores.at(vulkanResource.GetCurrentFrameOffset());
-        auto& currentRenderSemaphore  = _renderSemaphores.at(vulkanResource.GetCurrentFrameOffset());
+        auto& currentUpdateSemaphore = _updateSemaphores.at(vulkanResource.GetCurrentFrameOffset());
+        auto& currentRenderSemaphore = _renderSemaphores.at(vulkanResource.GetCurrentFrameOffset());
 
         auto imageAcquiredSemaphore = vulkanResource.GetCurrentImageAcquiredSemaphore();
 
@@ -122,6 +122,8 @@ namespace Prism::Managers
 
         { // Update
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
+
+            _meshLoadingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
 
             _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
             _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);

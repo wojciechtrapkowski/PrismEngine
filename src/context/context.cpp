@@ -9,14 +9,8 @@
 #include "managers/scene_draw_systems_manager.hpp"
 #include "managers/scene_update_systems_manager.hpp"
 
-#include "systems/mesh_loading_system.hpp"
-#include "resources/vulkan/vk_staging_buffer_resource.hpp"
-#include "resources/vulkan/vk_command_pool_resource.hpp"
-
 #include "resources/context_resources.hpp"
-
 #include "resources/scene.hpp"
-#include "systems/mesh_loading_system.hpp"
 
 #include <format>
 #include <iostream>
@@ -88,29 +82,6 @@ namespace Prism::Context
                 float currentTime = glfwGetTime();
                 deltaTime         = currentTime - lastFrameTime;
                 lastFrameTime     = currentTime;
-                
-                // TODO: Move it into separate manager.
-                { // Everything that we need to do for all frames in flight. Maybe SceneUpdateSystemsManager?
-                    auto commandPoolScope = commandPool.BeginScope();
-
-                    meshLoadingSystem.Update(deltaTime, commandPoolScope.GetNextCommandBuffer(), stagingBuffer, scene);
-
-                    stagingBuffer.Commit(commandPoolScope.GetNextCommandBuffer());
-
-                    VkSubmitInfo submitInfo{};
-                    submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                    submitInfo.waitSemaphoreCount   = 0;
-                    submitInfo.pWaitSemaphores      = nullptr;
-                    submitInfo.pWaitDstStageMask    = nullptr;
-                    submitInfo.commandBufferCount   = static_cast<uint32_t>(commandPoolScope.size());
-                    submitInfo.pCommandBuffers      = commandPoolScope.data();
-                    submitInfo.signalSemaphoreCount = 0;
-                    submitInfo.pSignalSemaphores    = nullptr;
-
-                    vkQueueSubmit(vulkanResource.GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-
-                    vkQueueWaitIdle(vulkanResource.GetGraphicsQueue());
-                }
 
                 contextUpdateSystemsManager.Update(deltaTime);
 

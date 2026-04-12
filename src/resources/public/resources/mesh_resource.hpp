@@ -12,6 +12,17 @@
 
 namespace Prism::Resources
 {
+
+    // Thanks to such approach we eliminate problem with sub allocations and their life-cycle management.
+    // When main buffer dies this buffer allocation becomes invalid. It's caller's responsibility to check if the buffer exists.
+    // When allocation dies it's a bigger problem. We assume that system that creates a parent buffer performs defragmentation sometimes.
+    struct BufferAllocation
+    {
+        Resources::VkBufferResource<>::ID bufferId = {};
+        uint32_t                          offset   = 0;
+        uint32_t                          size     = 0;
+    };
+
     struct MeshResource : ResourceImpl<MeshResource>
     {
         static inline const VkFormat    VERTEX_TYPE = VK_FORMAT_R32G32B32_SFLOAT;
@@ -62,6 +73,10 @@ namespace Prism::Resources
         Resources::VkBufferResource<Vertex>         _vertexBuffer = {};
         Resources::VkBufferResource<Index>          _indexBuffer  = {};
         std::optional<Resources::VkTextureResource> _texture      = std::nullopt;
+
+        // BufferAllocation                _vertexBuffer = {};
+        // BufferAllocation                _indexBuffer  = {};
+        // std::optional<BufferAllocation> _texture      = {};
     };
 
 }; // namespace Prism::Resources

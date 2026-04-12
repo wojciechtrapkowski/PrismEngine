@@ -28,7 +28,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
-        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 12;
+        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 16;
 
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {

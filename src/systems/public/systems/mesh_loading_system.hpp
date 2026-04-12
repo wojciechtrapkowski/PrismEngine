@@ -10,6 +10,10 @@
 
 namespace Prism::Systems
 {
+    // Will manage Vertex Index and Texture buffer lifetime. If the new request for a mesh came - load it using mesh loader.
+    // Check if we need to create / recreate buffer - if not just use staging buffer to copy. If will be needed we can use another
+    // thread to memcpy everything. Create MeshResources - which will contain BuffersAllocation for each. Then UI will just take all of these
+    // MeshResources and add option to select one for entity. MeshDrawingSystem & RT System will use these vertex and index buffers. Texture as well
     struct MeshLoadingSystem
     {
         MeshLoadingSystem(Resources::ContextResources& contextResources);

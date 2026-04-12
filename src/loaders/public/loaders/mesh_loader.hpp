@@ -23,6 +23,11 @@ namespace Prism::Loaders
         MeshLoader(MeshLoader& other)      = delete;
         MeshLoader& operator=(MeshLoader&) = delete;
 
-        result_type operator()(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const;
+        // Will return MeshDescriptorResource - vector of vertices, indices and image data.
+        result_type operator()(
+            Resources::VulkanResource&          vulkanResource,
+            VkCommandBuffer                     commandBuffer,
+            Resources::VkStagingBufferResource& stagingBuffer,
+            const std::string&                  path) const;
     };
 }; // namespace Prism::Loaders

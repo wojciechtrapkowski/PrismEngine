@@ -137,9 +137,13 @@ namespace Prism::Loaders
             return MeshDescriptor{.vertices = std::move(vertices), .indices = std::move(indices), .texturePath = std::move(texturePath)};
         }
 
-        std::optional<Resources::VkTextureResource>
-        loadTexture(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::optional<std::string>& pathOpt)
+        std::optional<Resources::VkTextureResource> loadTexture(
+            Resources::VulkanResource&          vulkanResource,
+            VkCommandBuffer                     commandBuffer,
+            Resources::VkStagingBufferResource& stagingBuffer,
+            const std::optional<std::string>&   pathOpt)
         {
+            // TODO: Add resizing texture, so we can creatue texture arrays - one image with multiple layers.
             if (!pathOpt) {
                 return std::nullopt;
             }
@@ -241,8 +245,11 @@ namespace Prism::Loaders
         }
     } // namespace
 
-    MeshLoader::result_type
-    MeshLoader::operator()(Resources::VulkanResource& vulkanResource, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, const std::string& path) const
+    MeshLoader::result_type MeshLoader::operator()(
+        Resources::VulkanResource&          vulkanResource,
+        VkCommandBuffer                     commandBuffer,
+        Resources::VkStagingBufferResource& stagingBuffer,
+        const std::string&                  path) const
     {
         Assimp::Importer importer;
 

@@ -89,6 +89,7 @@ namespace Prism::Systems
                 return;
             }
 
+            // This should be done when we go back to the first frame frames in flight count.
             auto& meshStorage = scene.GetMeshStorage();
             auto  meshId      = std::hash<std::string>{}("MeshResources/" + *_meshFilePathToLoad);
 
