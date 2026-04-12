@@ -395,7 +395,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> accelerationStructureBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.accelerationStructureSize,
-                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
 
             VkPhysicalDeviceAccelerationStructurePropertiesKHR accelProps{};
             accelProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
@@ -407,7 +407,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> scratchBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.buildScratchSize,
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                 accelProps.minAccelerationStructureScratchOffsetAlignment};
 
             VkAccelerationStructureCreateInfoKHR accelCreateInfo{
@@ -483,7 +483,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> accelerationStructureBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.accelerationStructureSize,
-                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
 
             VkPhysicalDeviceAccelerationStructurePropertiesKHR accelProps{};
             accelProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
@@ -495,7 +495,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> scratchBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.buildScratchSize,
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                 accelProps.minAccelerationStructureScratchOffsetAlignment};
 
             VkAccelerationStructureCreateInfoKHR accelCreateInfo{
@@ -591,7 +591,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 Resources::VkBufferResource<> scratchBuffer{
                     vulkan.GetVmaAllocator(),
                     buildSize.updateScratchSize,
-                    VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                     accelProps.minAccelerationStructureScratchOffsetAlignment};
 
                 resourceStorage.Delete(scratchBufferId);
@@ -698,7 +698,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             auto sbtBuffer = Resources::VkBufferResource<>(
                 vmaAllocator,
                 sbtSize,
-                VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
             stagingBuffer.Copy(sbtBuffer.GetBuffer(), handles.data(), handleSize);                                  // raygen
@@ -743,7 +743,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             auto meshesInfosBuffer = Resources::VkBufferResource<MeshInfo>(
                 vmaAllocator,
                 meshesInfos.size() * sizeof(MeshInfo),
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_AUTO);
 
             stagingBuffer.Copy(meshesInfosBuffer.GetBuffer(), meshesInfos.data(), meshesInfos.size() * sizeof(MeshInfo));
@@ -876,8 +876,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 Resources::VkBufferResource<VkAccelerationStructureInstanceKHR> tlasInstancesBuffer{
                     vmaAllocator,
                     sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size(),
-                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT |
-                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                     VMA_MEMORY_USAGE_CPU_TO_GPU};
 
                 // TLAS acceleration structure needs it immediately.

@@ -110,7 +110,7 @@ namespace Prism::UI
                                             [&mesh](const auto& meshIdAndName) { return meshIdAndName.first == mesh.resourceId; }) -
                                         availableMeshResourcesIdsAndNames.begin();
                 std::string previewLabel = [&]() {
-                    if (currentMeshIndex < 0 || currentMeshIndex >= availableMeshResources.size()) {
+                    if (currentMeshIndex < 0 || currentMeshIndex >= availableMeshResourcesIdsAndNames.size()) {
                         return std::string("None");
                     }
                     return availableMeshResourcesIdsAndNames[currentMeshIndex].second;
