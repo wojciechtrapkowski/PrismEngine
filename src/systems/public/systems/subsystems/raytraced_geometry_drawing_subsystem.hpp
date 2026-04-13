@@ -74,5 +74,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         // When recreating TLAS.
         std::optional<Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>> _tlasInstancesBufferToDelete = std::nullopt;
         std::optional<Resources::VkAccelerationStructureResource>                      _tlasAccelStructToDelete     = std::nullopt;
+        std::optional<Resources::VkBufferResource<MeshInfo>>                           _meshesInfosBufferToDelete   = std::nullopt;
     };
 }; // namespace Prism::Systems::Subsystems::MeshDrawingSystem

@@ -665,6 +665,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
         _tlasAccelStructToDelete     = std::nullopt;
         _tlasInstancesBufferToDelete = std::nullopt;
+        _meshesInfosBufferToDelete   = std::nullopt;
         _blasToInstanceData.clear();
 
         auto sbtBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(SBT_BUFFER_ID);
@@ -715,41 +716,56 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             resourceStorage.Insert<Resources::VkBufferResource<>>(SBT_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(sbtBuffer)));
         }
 
-        bool doWeNeedToRecreateMeshesInfosBuffer = false;
+        auto meshesInfosCreationBlock = [&]() {
+            bool doWeNeedToRecreateMeshesInfosBuffer = false;
 
-        auto meshesInfosBufferOpt = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID);
-        doWeNeedToRecreateMeshesInfosBuffer |= !meshesInfosBufferOpt.has_value();
+            auto meshesInfosBufferOpt = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID);
+            doWeNeedToRecreateMeshesInfosBuffer |= !meshesInfosBufferOpt.has_value();
 
-        if (meshesInfosBufferOpt) {
+            if (meshesInfosBufferOpt) {
+                auto meshView = scene.GetRegistry().view<Components::Mesh>();
+
+                size_t meshCount = 0;
+                for (auto [_, meshComponent] : meshView.each()) {
+                    auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
+                    if (!meshOpt) {
+                        continue;
+                    }
+                    auto& mesh = meshOpt->get();
+
+                    if (!mesh.GetID()) {
+                        continue;
+                    }
+
+                    meshCount++;
+                }
+
+                if (meshesInfosBufferOpt->get().GetElementCount() != meshCount) {
+                    doWeNeedToRecreateMeshesInfosBuffer |= true;
+                    _meshesInfosBufferToDelete = std::move(meshesInfosBufferOpt->get());
+                }
+            }
+
             auto meshView = scene.GetRegistry().view<Components::Mesh>();
+            if (doWeNeedToRecreateMeshesInfosBuffer) {
+                resourceStorage.Delete(MESHES_INFOS_BUFFER_ID);
 
-            size_t meshCount = 0;
-            for (auto [_, meshComponent] : meshView.each()) {
-                auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
-                if (!meshOpt) {
-                    continue;
-                }
-                auto& mesh = meshOpt->get();
+                auto meshesInfosBuffer = Resources::VkBufferResource<MeshInfo>(
+                    vmaAllocator,
+                    meshView.size() * sizeof(MeshInfo),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-                if (!mesh.GetID()) {
-                    continue;
-                }
-
-                meshCount++;
+                resourceStorage.Insert<Resources::VkBufferResource<MeshInfo>>(
+                    MESHES_INFOS_BUFFER_ID, std::make_unique<Resources::VkBufferResource<MeshInfo>>(std::move(meshesInfosBuffer)));
             }
 
-            if (meshesInfosBufferOpt->get().GetElementCount() != meshCount) {
-                doWeNeedToRecreateMeshesInfosBuffer |= true;
-            }
-        }
-        // TODO: What if user deleted an entity and then created one? Is it possible to do that in one frame?
-
-        if (doWeNeedToRecreateMeshesInfosBuffer) {
-            resourceStorage.Delete(MESHES_INFOS_BUFFER_ID);
+            auto& meshesInfosBuffer = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID)->get();
 
             std::vector<MeshInfo> meshesInfos;
-            auto                  meshView     = scene.GetRegistry().view<Components::Mesh>();
-            int                   textureIndex = 0;
+            meshesInfos.reserve(meshView.size());
+
+            int textureIndex = 0;
             for (auto [_, meshComponent] : meshView.each()) {
                 auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
                 if (!meshOpt) {
@@ -772,24 +788,19 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 }
                 meshesInfos.push_back(info);
             }
-
-            auto meshesInfosBuffer = Resources::VkBufferResource<MeshInfo>(
-                vmaAllocator,
-                meshesInfos.size() * sizeof(MeshInfo),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                VMA_MEMORY_USAGE_AUTO);
-
             stagingBuffer.Copy(meshesInfosBuffer.GetBuffer(), meshesInfos.data(), meshesInfos.size() * sizeof(MeshInfo));
 
-            resourceStorage.Insert<Resources::VkBufferResource<MeshInfo>>(
-                MESHES_INFOS_BUFFER_ID, std::make_unique<Resources::VkBufferResource<MeshInfo>>(std::move(meshesInfosBuffer)));
-        }
+            return true;
+        }();
 
         // BLAS creation.
         auto blasesCreationBlock = [&]() {
             auto meshView     = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
             bool isEmptyScene = [&]() {
-                for (auto [_, _mesh, _transform] : meshView.each()) {
+                for (auto [_, mesh, _transform] : meshView.each()) {
+                    if (mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                        continue;
+                    }
                     return false;
                 }
                 return true;
@@ -801,14 +812,18 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             for (auto [meshEntity, meshComponent, transformComponent] : meshView.each()) {
                 auto& meshResourceId = meshComponent.resourceId;
 
-                auto blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
-                auto blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
-
                 auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
                 if (!meshOpt) {
                     continue;
                 }
                 auto& mesh = meshOpt->get();
+
+                if (!mesh.GetID()) {
+                    continue;
+                }
+
+                auto blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
+                auto blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
 
                 auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!accelStructureResourceOpt) {
