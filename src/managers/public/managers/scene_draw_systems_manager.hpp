@@ -44,10 +44,10 @@ namespace Prism::Managers
         Systems::PresentSystem        _presentSystem;
 
         // That is temporary, need a place for that. This is per frame in flight.
-        std::vector<Resources::VkCommandPoolResource> _commandPools           = {};
-        std::vector<VkSemaphore>                      _updateSemaphores       = {};
-        std::vector<VkSemaphore>                      _renderSemaphores       = {};
-        std::vector<VkSemaphore>                      _presentReadySemaphores = {};
+        std::vector<Resources::VkCommandPoolResource> _commandPools     = {};
+        std::vector<VkSemaphore>                      _tempSemaphores   = {};
+        std::vector<VkSemaphore>                      _updateSemaphores = {};
+        std::vector<VkSemaphore>                      _renderSemaphores = {};
 
         std::vector<Resources::VkStagingBufferResource> _stagingBuffers = {};
     };

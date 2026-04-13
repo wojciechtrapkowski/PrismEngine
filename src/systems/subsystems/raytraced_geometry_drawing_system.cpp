@@ -715,9 +715,38 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             resourceStorage.Insert<Resources::VkBufferResource<>>(SBT_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(sbtBuffer)));
         }
 
-        // This should be recreated when number of meshes changes.
+        bool doWeNeedToRecreateMeshesInfosBuffer = false;
+
         auto meshesInfosBufferOpt = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID);
-        if (!meshesInfosBufferOpt) {
+        doWeNeedToRecreateMeshesInfosBuffer |= !meshesInfosBufferOpt.has_value();
+
+        if (meshesInfosBufferOpt) {
+            auto meshView = scene.GetRegistry().view<Components::Mesh>();
+
+            size_t meshCount = 0;
+            for (auto [_, meshComponent] : meshView.each()) {
+                auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
+                if (!meshOpt) {
+                    continue;
+                }
+                auto& mesh = meshOpt->get();
+
+                if (!mesh.GetID()) {
+                    continue;
+                }
+
+                meshCount++;
+            }
+
+            if (meshesInfosBufferOpt->get().GetElementCount() != meshCount) {
+                doWeNeedToRecreateMeshesInfosBuffer |= true;
+            }
+        }
+        // TODO: What if user deleted an entity and then created one? Is it possible to do that in one frame?
+
+        if (doWeNeedToRecreateMeshesInfosBuffer) {
+            resourceStorage.Delete(MESHES_INFOS_BUFFER_ID);
+
             std::vector<MeshInfo> meshesInfos;
             auto                  meshView     = scene.GetRegistry().view<Components::Mesh>();
             int                   textureIndex = 0;
@@ -727,6 +756,10 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                     continue;
                 }
                 auto& mesh = meshOpt->get();
+
+                if (!mesh.GetID()) {
+                    continue;
+                }
 
                 MeshInfo info{};
                 info.vertexBufferAddress = mesh.GetVertexBuffer().GetBufferDeviceAddress();

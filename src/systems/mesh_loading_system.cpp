@@ -40,7 +40,7 @@ namespace Prism::Systems
                 std::cerr << "Couldn't load backpack model!" << std::endl;
             } else {
                 auto& backpackModel = *backpackModelOpt;
-                auto  backpackId    = std::hash<const char*>{}("MeshResources/Backpack");
+                auto  backpackId    = std::hash<std::string>{}("MeshResources/Backpack");
 
                 auto& meshStorage = scene.GetMeshStorage();
                 meshStorage.Insert<Resources::MeshResource>(backpackId, std::move(backpackModel));
@@ -58,7 +58,7 @@ namespace Prism::Systems
                 std::cerr << "Couldn't load cube model!" << std::endl;
             } else {
                 auto& cubeModel = *cubeModelOpt;
-                auto  cubeId    = std::hash<const char*>{}("MeshResources/Cube");
+                auto  cubeId    = std::hash<std::string>{}("MeshResources/Cube");
 
                 auto& meshStorage = scene.GetMeshStorage();
                 meshStorage.Insert<Resources::MeshResource>(cubeId, std::move(cubeModel));
