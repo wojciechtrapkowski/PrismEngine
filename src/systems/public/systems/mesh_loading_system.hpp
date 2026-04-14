@@ -21,7 +21,7 @@ namespace Prism::Systems
         MeshLoadingSystem(MeshLoadingSystem&& other)            = delete;
         MeshLoadingSystem& operator=(MeshLoadingSystem&& other) = delete;
 
-        void Update(float deltaTime, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer);
+        void Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene);
 
     private:
         void onMeshFileOpen(const Events::MeshFileOpenEvent& event);
@@ -31,5 +31,7 @@ namespace Prism::Systems
         entt::scoped_connection _onMeshFileOpenConnection;
 
         std::optional<std::string> _meshFilePathToLoad;
+
+        std::vector<std::string> _meshesLoaded;
     };
 }; // namespace Prism::Systems

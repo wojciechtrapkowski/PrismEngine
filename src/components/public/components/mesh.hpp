@@ -1,13 +1,10 @@
 #pragma once
 
-#include <string>
+#include <optional>
+#include "resources/mesh_resource.hpp"
 
 namespace Prism
 {
-    namespace Resources
-    {
-        struct MeshResource;
-    }
 
     namespace Components
     {
@@ -16,4 +13,4 @@ namespace Prism
             Resources::MeshResource::ID resourceId = Resources::MeshResource::UNINITIALIZED_ID;
         };
     } // namespace Components
-};    // namespace Prism
+}; // namespace Prism

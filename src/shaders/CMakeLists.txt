@@ -38,7 +38,7 @@ macro(create_shader FILE)
     # Compile shader to SPIR-V
     add_custom_command(
         OUTPUT ${OUTPUT_SPV}
-        COMMAND ${GLSLANG_VALIDATOR} -V --target-env vulkan1.2 ${FILE} -o ${OUTPUT_SPV} 1> "${NULL_DEVICE}" # -q make it quietly, skipping stdout
+        COMMAND ${GLSLANG_VALIDATOR} -V --target-env vulkan1.2 ${FILE} -o ${OUTPUT_SPV} #  1> "${NULL_DEVICE}" -q make it quietly, skipping stdout 
         DEPENDS ${FILE}
         BYPRODUCTS ${OUTPUT_SPV}    
         COMMENT "Compiling shader ${REL_PATH} -> ${OUTPUT_SPV}"

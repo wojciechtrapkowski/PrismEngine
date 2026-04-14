@@ -174,16 +174,27 @@ namespace Prism::Loaders
             std::vector<VkPhysicalDevice> devices(deviceCount);
             vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+            std::optional<VkPhysicalDevice> pickedDevice = std::nullopt;
             for (const auto& device : devices) {
                 VkPhysicalDeviceProperties deviceProperties{};
                 vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-                if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && checkPhysicalDeviceExtensionsSupport(device)) {
-                    return device;
+                if (!checkPhysicalDeviceExtensionsSupport(device)) {
+                    continue;
+                }
+
+                if (!pickedDevice) {
+                    pickedDevice = device;
+                } else if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                    pickedDevice = device;
                 }
             }
 
-            throw std::runtime_error("Couldn't find a suitable discrete GPU!");
+            if (!pickedDevice) {
+                throw std::runtime_error("Couldn't find a suitable discrete GPU!");
+            }
+
+            return pickedDevice.value();
         };
 
         std::pair<VkDevice, Resources::VulkanDeviceAdditionalExtensions>
@@ -208,10 +219,17 @@ namespace Prism::Loaders
             auto additionalDeviceExtensions = getAdditionalDeviceExtensions(physicalDevice);
 
             VkPhysicalDeviceFeatures deviceFeatures{};
+            deviceFeatures.shaderInt64 = VK_TRUE;
 
             VkPhysicalDeviceVulkan12Features vulkan12Features{};
             vulkan12Features.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
             vulkan12Features.bufferDeviceAddress = VK_TRUE;
+            // So we can have array of textures in shaders.
+            vulkan12Features.runtimeDescriptorArray                    = VK_TRUE;
+            vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+            vulkan12Features.descriptorBindingPartiallyBound           = VK_TRUE;
+            vulkan12Features.scalarBlockLayout                         = VK_TRUE; // scalar layout qualifier
+            vulkan12Features.descriptorIndexing                        = VK_TRUE; // unbounded arrays
 
             VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
             dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;

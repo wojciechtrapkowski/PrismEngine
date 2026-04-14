@@ -117,7 +117,7 @@ namespace Prism::Resources
         VkQueue          presentationQueue = VK_NULL_HANDLE;
 
         VkFormat       swapchainImageFormat = Resources::RenderTargetResource::GetColorFormat();
-        VkFormat       swapchainDepthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
+        VkFormat       swapchainDepthFormat = Resources::RenderTargetResource::GetDepthFormat();
         VkExtent2D     swapchainExtent      = {0, 0};
         VkSwapchainKHR swapchain            = VK_NULL_HANDLE;
 

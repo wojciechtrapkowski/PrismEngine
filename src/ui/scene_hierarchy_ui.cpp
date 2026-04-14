@@ -63,6 +63,25 @@ namespace Prism::UI
         void renderMeshComponent(
             const std::vector<std::reference_wrapper<Resources::MeshResource>>& availableMeshResources, entt::registry& registry, entt::entity entity)
         {
+            std::vector<std::pair<Resources::MeshResource::ID, std::string>> availableMeshResourcesIdsAndNames;
+
+            // One additional place for uninitialized field.
+            availableMeshResourcesIdsAndNames.reserve(availableMeshResources.size() + 1);
+
+            availableMeshResourcesIdsAndNames.push_back(std::make_pair(Resources::MeshResource::UNINITIALIZED_ID, "None"));
+
+            for (const auto& availableMeshResourceRef : availableMeshResources) {
+                auto& availableMeshResource     = availableMeshResourceRef.get();
+                auto  availableMeshResourceId   = availableMeshResource.GetID();
+                auto  availableMeshResourceName = std::format("Mesh name: {}", availableMeshResource.GetName());
+
+                if (availableMeshResourceId == std::nullopt) {
+                    continue;
+                }
+
+                availableMeshResourcesIdsAndNames.push_back(std::make_pair(availableMeshResourceId.value(), availableMeshResourceName));
+            }
+
             if (!registry.all_of<Components::Mesh>(entity))
                 return;
 
@@ -86,29 +105,23 @@ namespace Prism::UI
                 auto& mesh = *meshPtr;
 
                 auto currentMeshIndex = std::find_if(
-                                            availableMeshResources.begin(),
-                                            availableMeshResources.end(),
-                                            [&mesh](const Resources::MeshResource& meshResource) { return meshResource.GetID() == mesh.resourceId; }) -
-                                        availableMeshResources.begin();
-
+                                            availableMeshResourcesIdsAndNames.begin(),
+                                            availableMeshResourcesIdsAndNames.end(),
+                                            [&mesh](const auto& meshIdAndName) { return meshIdAndName.first == mesh.resourceId; }) -
+                                        availableMeshResourcesIdsAndNames.begin();
                 std::string previewLabel = [&]() {
-                    if (currentMeshIndex < 0 || currentMeshIndex >= availableMeshResources.size()) {
+                    if (currentMeshIndex < 0 || currentMeshIndex >= availableMeshResourcesIdsAndNames.size()) {
                         return std::string("None");
                     }
-                    return std::format("Mesh Name: {}", availableMeshResources[currentMeshIndex].get().GetName());
+                    return availableMeshResourcesIdsAndNames[currentMeshIndex].second;
                 }();
 
                 if (ImGui::BeginCombo("##MeshResource", previewLabel.c_str())) {
-                    for (const auto& meshResourceRef : availableMeshResources) {
-                        auto&       meshResource = meshResourceRef.get();
-                        std::string label        = std::format("Mesh Name: {}", meshResource.GetName());
-                        const bool  isSelected   = (meshResource.GetID() == mesh.resourceId);
+                    for (const auto& [meshId, meshName] : availableMeshResourcesIdsAndNames) {
+                        const bool isSelected = (meshId == mesh.resourceId);
 
-                        if (ImGui::Selectable(label.c_str(), isSelected)) {
-                            if (!meshResource.GetID()) {
-                                continue;
-                            }
-                            mesh.resourceId = meshResource.GetID().value();
+                        if (ImGui::Selectable(meshName.c_str(), isSelected)) {
+                            mesh.resourceId = meshId;
                         }
 
                         if (isSelected) {
@@ -127,9 +140,9 @@ namespace Prism::UI
         {
             auto& name = registry.get<Components::Name>(entity);
 
-            ImGui::OpenPopupOnItemClick(std::format("{}_popup", name.name).c_str(), ImGuiPopupFlags_MouseButtonRight);
+            ImGui::OpenPopupOnItemClick(std::format("{}_popup", static_cast<uint32_t>(entity)).c_str(), ImGuiPopupFlags_MouseButtonRight);
 
-            if (ImGui::BeginPopup(std::format("{}_popup", name.name).c_str())) {
+            if (ImGui::BeginPopup(std::format("{}_popup", static_cast<uint32_t>(entity)).c_str())) {
                 if (ImGui::BeginMenu("Add new component")) {
                     if (ImGui::MenuItem("Transform")) {
                         registry.emplace_or_replace<Components::Transform>(entity);
@@ -179,7 +192,6 @@ namespace Prism::UI
 
             auto& name = registry.get<Components::Name>(entity);
 
-            ImGui::SameLine();
             ImGui::SetKeyboardFocusHere();
 
             bool confirmRename = false;
@@ -212,7 +224,7 @@ namespace Prism::UI
         }
     } // namespace
 
-    SceneHierarchyUI::SceneHierarchyUI(Resources::ContextResources& contextResources) : _contextResources(contextResources){};
+    SceneHierarchyUI::SceneHierarchyUI(Resources::ContextResources& contextResources) : _contextResources(contextResources) {};
 
     void SceneHierarchyUI::Update(float deltaTime, Resources::Scene& scene)
     {

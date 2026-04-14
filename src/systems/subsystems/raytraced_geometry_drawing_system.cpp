@@ -36,18 +36,27 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 {
     namespace
     {
+        inline static const uint32_t MAX_NUMBER_OF_TEXTURES = 1024;
 
         VkDescriptorPool createDescriptorPool(VkDevice device)
         {
             VkDescriptorPool descriptorPool;
 
-            std::array<VkDescriptorPoolSize, 3> poolSizes{};
+            std::array<VkDescriptorPoolSize, 5> poolSizes{};
             poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             poolSizes[0].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
-            poolSizes[1].type            = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-            poolSizes[1].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
-            poolSizes[2].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+            poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            poolSizes[1].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT * MAX_NUMBER_OF_TEXTURES;
+
+            poolSizes[2].type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             poolSizes[2].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
+
+            poolSizes[3].type            = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            poolSizes[3].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
+
+            poolSizes[4].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            poolSizes[4].descriptorCount = Resources::VulkanResource::FRAMES_IN_FLIGHT;
 
             VkDescriptorPoolCreateInfo poolInfo{};
             poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -74,28 +83,60 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             uboBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
             uboBinding.pImmutableSamplers = nullptr;
 
-            // Binding 1: top-level acceleration structure
+            // Binding 1: textures
+            VkDescriptorSetLayoutBinding samplerBinding{};
+            samplerBinding.binding            = 1;
+            samplerBinding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            samplerBinding.descriptorCount    = MAX_NUMBER_OF_TEXTURES;
+            samplerBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            samplerBinding.pImmutableSamplers = nullptr;
+
+            // Binding 2: meshes infos
+            VkDescriptorSetLayoutBinding meshesInfosBinding{};
+            meshesInfosBinding.binding            = 2;
+            meshesInfosBinding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            meshesInfosBinding.descriptorCount    = 1;
+            meshesInfosBinding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            meshesInfosBinding.pImmutableSamplers = nullptr;
+
+            // Binding 3: top-level acceleration structure
             VkDescriptorSetLayoutBinding tlasBinding{};
-            tlasBinding.binding            = 1;
+            tlasBinding.binding            = 3;
             tlasBinding.descriptorType     = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
             tlasBinding.descriptorCount    = 1;
             tlasBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
             tlasBinding.pImmutableSamplers = nullptr;
 
-            // Binding 2: storage image for ray tracing output
+            // Binding 4: storage image for ray tracing output
             VkDescriptorSetLayoutBinding outputImageBinding{};
-            outputImageBinding.binding            = 2;
+            outputImageBinding.binding            = 4;
             outputImageBinding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             outputImageBinding.descriptorCount    = 1;
             outputImageBinding.stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
             outputImageBinding.pImmutableSamplers = nullptr;
 
-            std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboBinding, tlasBinding, outputImageBinding};
+            std::array<VkDescriptorSetLayoutBinding, 5> bindings = {uboBinding, samplerBinding, meshesInfosBinding, tlasBinding, outputImageBinding};
 
             VkDescriptorSetLayoutCreateInfo layoutInfo{};
             layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
             layoutInfo.pBindings    = bindings.data();
+
+            VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+            bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+
+            std::array<VkDescriptorBindingFlags, 5> bindingFlags = {
+                0,                                         // binding 0 (UBO) - no special flags
+                VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT, // binding 1 (samplers) - we won't use all of them.
+                0,                                         // binding 2 (meshes infos) - no special flags
+                0,                                         // binding 3 (TLAS) - no special flags
+                0                                          // binding 4 (output image) - no special flags
+            };
+
+            bindingFlagsInfo.bindingCount  = static_cast<uint32_t>(bindingFlags.size());
+            bindingFlagsInfo.pBindingFlags = bindingFlags.data();
+
+            layoutInfo.pNext = &bindingFlagsInfo;
 
             if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
                 throw std::runtime_error("failed to create descriptor set layout");
@@ -205,8 +246,16 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
 
         void updateDescriptorSet(
-            VkDevice device, VkDescriptorSet descriptorSet, VkBuffer commonUniformBuffer, VkAccelerationStructureKHR tlas, VkImageView outputImageView)
+            VkDevice                            device,
+            VkDescriptorSet                     descriptorSet,
+            VkBuffer                            commonUniformBuffer,
+            std::vector<VkDescriptorImageInfo>& textureImageInfos,
+            VkBuffer                            meshesInfos,
+            VkAccelerationStructureKHR          tlas,
+            VkImageView                         outputImageView)
         {
+            std::vector<VkWriteDescriptorSet> descriptorWrites = {};
+
             // Binding 0: common UBO
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = commonUniformBuffer;
@@ -222,7 +271,38 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             uboWrite.descriptorCount = 1;
             uboWrite.pBufferInfo     = &bufferInfo;
 
-            // Binding 1: TLAS
+            descriptorWrites.push_back(uboWrite);
+
+            // Binding 1: Textures
+            if (!textureImageInfos.empty()) {
+                VkWriteDescriptorSet samplerWrite{};
+                samplerWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                samplerWrite.dstSet          = descriptorSet;
+                samplerWrite.dstBinding      = 1;
+                samplerWrite.dstArrayElement = 0;
+                samplerWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                samplerWrite.descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
+                samplerWrite.pImageInfo      = textureImageInfos.data();
+                descriptorWrites.push_back(samplerWrite);
+            }
+
+            // Binding 2: Meshes infos
+            VkDescriptorBufferInfo meshesInfosBufferInfo{};
+            meshesInfosBufferInfo.buffer = meshesInfos;
+            meshesInfosBufferInfo.offset = 0;
+            meshesInfosBufferInfo.range  = VK_WHOLE_SIZE;
+
+            VkWriteDescriptorSet meshesInfosWrite{};
+            meshesInfosWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            meshesInfosWrite.dstSet          = descriptorSet;
+            meshesInfosWrite.dstBinding      = 2;
+            meshesInfosWrite.dstArrayElement = 0;
+            meshesInfosWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            meshesInfosWrite.descriptorCount = 1;
+            meshesInfosWrite.pBufferInfo     = &meshesInfosBufferInfo;
+            descriptorWrites.push_back(meshesInfosWrite);
+
+            // Binding 3: TLAS
             VkWriteDescriptorSetAccelerationStructureKHR tlasWriteAS{};
             tlasWriteAS.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
             tlasWriteAS.accelerationStructureCount = 1;
@@ -232,12 +312,14 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             tlasWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             tlasWrite.pNext           = &tlasWriteAS;
             tlasWrite.dstSet          = descriptorSet;
-            tlasWrite.dstBinding      = 1;
+            tlasWrite.dstBinding      = 3;
             tlasWrite.dstArrayElement = 0;
             tlasWrite.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
             tlasWrite.descriptorCount = 1;
 
-            // Binding 2: storage image (output)
+            descriptorWrites.push_back(tlasWrite);
+
+            // Binding 4: storage image (output)
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageView   = outputImageView;
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -245,14 +327,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             VkWriteDescriptorSet imageWrite{};
             imageWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             imageWrite.dstSet          = descriptorSet;
-            imageWrite.dstBinding      = 2;
+            imageWrite.dstBinding      = 4;
             imageWrite.dstArrayElement = 0;
             imageWrite.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             imageWrite.descriptorCount = 1;
             imageWrite.pImageInfo      = &imageInfo;
 
-            std::array<VkWriteDescriptorSet, 3> writes = {uboWrite, tlasWrite, imageWrite};
-            vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+            descriptorWrites.push_back(imageWrite);
+
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         };
 
         Resources::VkAccelerationStructureResource createBLASFromMesh(
@@ -312,7 +395,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> accelerationStructureBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.accelerationStructureSize,
-                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
 
             VkPhysicalDeviceAccelerationStructurePropertiesKHR accelProps{};
             accelProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
@@ -324,7 +407,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> scratchBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.buildScratchSize,
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                 accelProps.minAccelerationStructureScratchOffsetAlignment};
 
             VkAccelerationStructureCreateInfoKHR accelCreateInfo{
@@ -400,7 +483,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> accelerationStructureBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.accelerationStructureSize,
-                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT};
+                VK_BUFFER_USAGE_2_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
 
             VkPhysicalDeviceAccelerationStructurePropertiesKHR accelProps{};
             accelProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
@@ -412,7 +495,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             Resources::VkBufferResource<> scratchBuffer{
                 vulkan.GetVmaAllocator(),
                 accelBuildSize.buildScratchSize,
-                VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                 accelProps.minAccelerationStructureScratchOffsetAlignment};
 
             VkAccelerationStructureCreateInfoKHR accelCreateInfo{
@@ -508,7 +591,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 Resources::VkBufferResource<> scratchBuffer{
                     vulkan.GetVmaAllocator(),
                     buildSize.updateScratchSize,
-                    VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                     accelProps.minAccelerationStructureScratchOffsetAlignment};
 
                 resourceStorage.Delete(scratchBufferId);
@@ -527,7 +610,12 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
     RaytracedGeometryDrawingSubsystem::RaytracedGeometryDrawingSubsystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
-        auto&            vulkanResource = _contextResources.GetVulkanResource();
+        auto& vulkanResource = _contextResources.GetVulkanResource();
+
+        if (!(vulkanResource.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE)) {
+            return;
+        }
+
         VkDevice         device         = vulkanResource.GetDevice();
         VkPhysicalDevice physicalDevice = vulkanResource.GetPhysicalDevice();
 
@@ -561,14 +649,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         }
     }
 
+#pragma region UPDATE
     void RaytracedGeometryDrawingSubsystem::Update(
         float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
     {
         auto& resourceStorage = _contextResources.GetResourceStorage();
         auto& vmaAllocator    = _contextResources.GetVulkanResource().GetVmaAllocator();
         auto& vulkan          = _contextResources.GetVulkanResource();
-
-        auto& meshStorage = scene.GetMeshStorage();
+        auto& registry        = scene.GetRegistry();
+        auto& meshStorage     = scene.GetMeshStorage();
 
         if (!(vulkan.GetAdditionalExtensions() & Resources::VulkanDeviceAdditionalExtensions::RAYTRACING_AVAILABLE)) {
             return;
@@ -576,6 +665,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
 
         _tlasAccelStructToDelete     = std::nullopt;
         _tlasInstancesBufferToDelete = std::nullopt;
+        _meshesInfosBufferToDelete   = std::nullopt;
         _blasToInstanceData.clear();
 
         auto sbtBufferOpt = resourceStorage.Get<Resources::VkBufferResource<>>(SBT_BUFFER_ID);
@@ -609,7 +699,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             auto sbtBuffer = Resources::VkBufferResource<>(
                 vmaAllocator,
                 sbtSize,
-                VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                VK_BUFFER_USAGE_2_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
             stagingBuffer.Copy(sbtBuffer.GetBuffer(), handles.data(), handleSize);                                  // raygen
@@ -626,11 +716,91 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             resourceStorage.Insert<Resources::VkBufferResource<>>(SBT_BUFFER_ID, std::make_unique<Resources::VkBufferResource<>>(std::move(sbtBuffer)));
         }
 
+        auto meshesInfosCreationBlock = [&]() {
+            bool doWeNeedToRecreateMeshesInfosBuffer = false;
+
+            auto meshesInfosBufferOpt = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID);
+            doWeNeedToRecreateMeshesInfosBuffer |= !meshesInfosBufferOpt.has_value();
+
+            if (meshesInfosBufferOpt) {
+                auto meshView = scene.GetRegistry().view<Components::Mesh>();
+
+                size_t meshCount = 0;
+                for (auto [_, meshComponent] : meshView.each()) {
+                    auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
+                    if (!meshOpt) {
+                        continue;
+                    }
+                    auto& mesh = meshOpt->get();
+
+                    if (!mesh.GetID()) {
+                        continue;
+                    }
+
+                    meshCount++;
+                }
+
+                if (meshesInfosBufferOpt->get().GetElementCount() != meshCount) {
+                    doWeNeedToRecreateMeshesInfosBuffer |= true;
+                    _meshesInfosBufferToDelete = std::move(meshesInfosBufferOpt->get());
+                }
+            }
+
+            auto meshView = scene.GetRegistry().view<Components::Mesh>();
+            if (doWeNeedToRecreateMeshesInfosBuffer) {
+                resourceStorage.Delete(MESHES_INFOS_BUFFER_ID);
+
+                auto meshesInfosBuffer = Resources::VkBufferResource<MeshInfo>(
+                    vmaAllocator,
+                    meshView.size() * sizeof(MeshInfo),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+                resourceStorage.Insert<Resources::VkBufferResource<MeshInfo>>(
+                    MESHES_INFOS_BUFFER_ID, std::make_unique<Resources::VkBufferResource<MeshInfo>>(std::move(meshesInfosBuffer)));
+            }
+
+            auto& meshesInfosBuffer = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID)->get();
+
+            std::vector<MeshInfo> meshesInfos;
+            meshesInfos.reserve(meshView.size());
+
+            int textureIndex = 0;
+            for (auto [_, meshComponent] : meshView.each()) {
+                auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshComponent.resourceId);
+                if (!meshOpt) {
+                    continue;
+                }
+                auto& mesh = meshOpt->get();
+
+                if (!mesh.GetID()) {
+                    continue;
+                }
+
+                MeshInfo info{};
+                info.vertexBufferAddress = mesh.GetVertexBuffer().GetBufferDeviceAddress();
+                info.indexBufferAddress  = mesh.GetIndexBuffer().GetBufferDeviceAddress();
+                if (mesh.GetTexture().has_value()) {
+                    info.textureIndex = textureIndex;
+                    textureIndex++;
+                } else {
+                    info.textureIndex = -1;
+                }
+                meshesInfos.push_back(info);
+            }
+            stagingBuffer.Copy(meshesInfosBuffer.GetBuffer(), meshesInfos.data(), meshesInfos.size() * sizeof(MeshInfo));
+
+            return true;
+        }();
+
         // BLAS creation.
         auto blasesCreationBlock = [&]() {
             auto meshView     = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
             bool isEmptyScene = [&]() {
-                for (auto [_, _mesh, _transform] : meshView.each()) {
+                for (auto [_, mesh, _transform] : meshView.each()) {
+                    if (mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                        continue;
+                    }
                     return false;
                 }
                 return true;
@@ -642,14 +812,18 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
             for (auto [meshEntity, meshComponent, transformComponent] : meshView.each()) {
                 auto& meshResourceId = meshComponent.resourceId;
 
-                auto blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
-                auto blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
-
                 auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
                 if (!meshOpt) {
                     continue;
                 }
                 auto& mesh = meshOpt->get();
+
+                if (!mesh.GetID()) {
+                    continue;
+                }
+
+                auto blasMeshResourceId  = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_ID_PREFIX, meshResourceId));
+                auto blasScratchBufferId = std::hash<std::string_view>{}(std::format("{}/{}", MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX, meshResourceId));
 
                 auto accelStructureResourceOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!accelStructureResourceOpt) {
@@ -691,6 +865,7 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 return t;
             };
 
+            uint32_t blasIndex = 0;
             for (const auto& [blasMeshResourceId, instances] : _blasToInstanceData) {
                 auto blasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(blasMeshResourceId);
                 if (!blasOpt) {
@@ -701,22 +876,23 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 addressInfo.sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
                 addressInfo.accelerationStructure = blas.GetAccelerationStructure();
 
-                auto instanceIndex = 0;
-
                 for (const auto& instance : instances) {
-                    auto& transform = scene.GetRegistry().get<Components::Transform>(instance);
+                    if (registry.all_of<Components::Mesh, Components::Transform>(instance) == false) {
+                        continue;
+                    }
+                    const auto& transform = scene.GetRegistry().get<Components::Transform>(instance);
 
                     VkAccelerationStructureInstanceKHR asInstance{};
                     asInstance.transform                              = toTransformMatrixKHR(transform.transform);
-                    asInstance.instanceCustomIndex                    = instanceIndex;
+                    asInstance.instanceCustomIndex                    = blasIndex;
                     asInstance.accelerationStructureReference         = vkGetAccelerationStructureDeviceAddressKHR(vulkan.GetDevice(), &addressInfo);
                     asInstance.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
                     asInstance.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // No culling - double sided
                     asInstance.mask                                   = 0xFF;
                     tlasInstances.emplace_back(asInstance);
-
-                    instanceIndex++;
                 }
+
+                blasIndex++;
             }
 
             // Only in the case when number of instances changed.
@@ -748,8 +924,8 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
                 Resources::VkBufferResource<VkAccelerationStructureInstanceKHR> tlasInstancesBuffer{
                     vmaAllocator,
                     sizeof(VkAccelerationStructureInstanceKHR) * tlasInstances.size(),
-                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT |
-                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                     VMA_MEMORY_USAGE_CPU_TO_GPU};
 
                 // TLAS acceleration structure needs it immediately.
@@ -799,7 +975,12 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         if (!commonUniformBufferOpt) {
             return;
         }
-        auto& commonUniformBuffer = commonUniformBufferOpt->get();
+        auto& commonUniformBuffer  = commonUniformBufferOpt->get();
+        auto  meshesInfosBufferOpt = resourceStorage.Get<Resources::VkBufferResource<MeshInfo>>(MESHES_INFOS_BUFFER_ID);
+        if (!meshesInfosBufferOpt) {
+            return;
+        }
+        auto& meshesInfos = meshesInfosBufferOpt->get();
 
         auto tlasOpt = resourceStorage.Get<Resources::VkAccelerationStructureResource>(TLAS_ACCEL_STRUCT_ID);
         if (!tlasOpt) {
@@ -825,7 +1006,38 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         depInfoToGeneral.pImageMemoryBarriers    = &toGeneral;
         vkCmdPipelineBarrier2(commandBuffer, &depInfoToGeneral);
 
-        updateDescriptorSet(vulkanResource.GetDevice(), _descriptorSets[currentFrame], commonUniformBuffer.GetBuffer(), tlas, renderTarget.GetColorImageView());
+        auto& registry          = scene.GetRegistry();
+        auto& meshStorage       = scene.GetMeshStorage();
+        auto  meshTransformView = registry.view<Components::Mesh, Components::Transform>();
+
+        std::vector<VkDescriptorImageInfo> textureImageInfos;
+        textureImageInfos.reserve(meshTransformView.size_hint());
+        for (const auto meshEntity : meshTransformView) {
+            const auto& meshResourceId = meshTransformView.get<Components::Mesh>(meshEntity).resourceId;
+
+            auto meshOpt = meshStorage.Get<Resources::MeshResource>(meshResourceId);
+            if (!meshOpt) {
+                continue;
+            }
+            auto& mesh = meshOpt->get();
+
+            if (mesh.GetTexture().has_value()) {
+                VkDescriptorImageInfo imageInfo{};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView   = mesh.GetTexture()->GetImageView();
+                imageInfo.sampler     = mesh.GetTexture()->GetSampler();
+                textureImageInfos.push_back(imageInfo);
+            }
+        }
+
+        updateDescriptorSet(
+            vulkanResource.GetDevice(),
+            _descriptorSets[currentFrame],
+            commonUniformBuffer.GetBuffer(),
+            textureImageInfos,
+            meshesInfos.GetBuffer(),
+            tlas,
+            renderTarget.GetColorImageView());
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipeline);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _pipelineLayout, 0, 1, &_descriptorSets[currentFrame], 0, nullptr);

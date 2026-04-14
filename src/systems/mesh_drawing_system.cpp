@@ -15,6 +15,22 @@
 
 namespace Prism::Systems
 {
+    namespace
+    {
+        bool isSceneEmpty(const Resources::Scene& scene)
+        {
+            auto& registry = scene.GetRegistry();
+
+            auto meshTransformView = registry.view<Components::Mesh, Components::Transform>();
+            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
+                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }
+    }; // namespace
 
     MeshDrawingSystem::MeshDrawingSystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
@@ -24,7 +40,7 @@ namespace Prism::Systems
 
     MeshDrawingSystem::~MeshDrawingSystem() {}
 
-    void MeshDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::VkStagingBufferResource& stagingBuffer)
+    void MeshDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -40,6 +56,11 @@ namespace Prism::Systems
             systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
         }
 
+        if (isSceneEmpty(scene)) {
+            vkEndCommandBuffer(commandBuffer);
+            return;
+        }
+
         _rasterizedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene);
         _raytracedGeometryDrawingSubsystem->Update(deltaTime, commandBuffer, scene, stagingBuffer);
 
@@ -53,17 +74,7 @@ namespace Prism::Systems
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        auto meshTransformView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
-        bool isEmptyScene      = [&]() {
-            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
-                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
-                    continue;
-                }
-                return false;
-            }
-            return true;
-        }();
-        if (isEmptyScene) {
+        if (isSceneEmpty(scene)) {
             vkEndCommandBuffer(commandBuffer);
             return;
         }

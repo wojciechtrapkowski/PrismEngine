@@ -16,6 +16,12 @@ namespace Prism::Resources
         VkBufferCopy region;
     };
 
+    struct PendingImageCopy
+    {
+        VkImage           destination;
+        VkBufferImageCopy region;
+    };
+
     struct VkStagingBufferResource : ResourceImpl<VkStagingBufferResource>
     {
         VkStagingBufferResource(VmaAllocator allocator);
@@ -30,19 +36,24 @@ namespace Prism::Resources
 
         void Copy(VkBuffer destination, void* data, size_t size, size_t offset = 0);
 
+        void CopyToImage(VkImage destination, void* data, size_t size, uint32_t width, uint32_t height);
+
         void CopyImmediately(VkCommandBuffer commandBuffer, VmaAllocation destinationAllocation, void* data, size_t size);
 
         void Commit(VkCommandBuffer commandBuffer);
 
     private:
-        static constexpr const VkDeviceSize INITIAL_SIZE = 10000;
+        void checkIfResizeIsNeeded(size_t additionalSize = 0);
+
+        static constexpr const VkDeviceSize INITIAL_SIZE = 1024 * 1024 * 512; // 0.5 GB
         friend void                         swap(VkStagingBufferResource& first, VkStagingBufferResource& second) noexcept;
 
-        VmaAllocator allocator = VK_NULL_HANDLE;
+        VmaAllocator _allocator = VK_NULL_HANDLE;
 
-        Resources::VkBufferResource<> stagingBuffer     = {};
-        size_t                        currentlyUtilized = 0;
+        Resources::VkBufferResource<> _stagingBuffer     = {};
+        size_t                        _currentlyUtilized = 0;
 
-        std::vector<PendingCopy> pendingCopies = {};
+        std::vector<PendingCopy>      _pendingCopies      = {};
+        std::vector<PendingImageCopy> _pendingImageCopies = {};
     };
 } // namespace Prism::Resources

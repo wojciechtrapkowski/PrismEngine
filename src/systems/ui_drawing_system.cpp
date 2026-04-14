@@ -21,7 +21,7 @@ namespace Prism::Systems
         m_cameraSettingsUI{contextResources}, _systemsSettingsUI{contextResources}
     {}
 
-    void UIDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene)
+    void UIDrawingSystem::Update(float deltaTime, VkCommandBuffer commandBuffer, Resources::VkStagingBufferResource& stagingBuffer, Resources::Scene& scene)
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -55,11 +55,11 @@ namespace Prism::Systems
         // Get frame buffer
         auto& vulkanResource        = m_contextResources.GetVulkanResource();
         auto& swapchainBoundStorage = vulkanResource.GetSwapchainBoundStorage();
-        auto  currentImageIndex     = vulkanResource.GetCurrentImageIndex();
+        auto  currentFrameOffset    = vulkanResource.GetCurrentFrameOffset();
 
         auto renderPass = m_contextResources.GetImGuiResource().GetRenderPass();
 
-        auto framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentImageIndex);
+        auto framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentFrameOffset);
         if (!framebufferOpt) {
             VkDevice   device = vulkanResource.GetDevice();
             VkExtent2D extent = vulkanResource.GetSwapchainExtent();
@@ -82,10 +82,9 @@ namespace Prism::Systems
 
             auto framebufferResource = std::make_unique<Resources::VkFramebufferResource>(device, framebuffer);
 
-            // Insert into ResourceStorage at frame index i
             swapchainBoundStorage.Insert<Resources::VkFramebufferResource>(
-                FRAMEBUFFER_RESOURCE_ID, std::move(framebufferResource), static_cast<size_t>(currentImageIndex));
-            framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentImageIndex);
+                FRAMEBUFFER_RESOURCE_ID, std::move(framebufferResource), static_cast<size_t>(currentFrameOffset));
+            framebufferOpt = swapchainBoundStorage.Get<Resources::VkFramebufferResource>(FRAMEBUFFER_RESOURCE_ID, currentFrameOffset);
         }
         Resources::VkFramebufferResource& framebuffer = framebufferOpt->get();
 

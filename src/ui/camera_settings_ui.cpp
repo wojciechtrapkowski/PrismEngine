@@ -25,7 +25,7 @@ namespace Prism::UI
         auto& cameraControl = registry.get<Components::CameraControl>(activeCameraEntity);
 
         ImGui::SliderFloat("Mouse sensitivity", &cameraControl.mouseSensitivity, 0.1f, 5.0f);
-        ImGui::SliderFloat("Move speed", &cameraControl.moveSpeed, 1.0f, 20.0f);
+        ImGui::SliderFloat("Move speed", &cameraControl.moveSpeed, 1.0f, 100.0f);
         ImGui::SliderFloat("FOV", &cameraControl.fov, 45.0f, 90.0f);
         ImGui::SliderFloat("Near plane", &cameraControl.nearPlane, 0.01f, 1.0f);
         ImGui::SliderFloat("Far plane", &cameraControl.farPlane, 10.0f, 10000.0f);

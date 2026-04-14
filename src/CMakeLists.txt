@@ -37,7 +37,7 @@ message(STATUS "PRISM_DEPENDENCIES = ${PRISM_DEPENDENCIES}")
 set_target_properties(PrismMain
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:PrismMain>
 )
 
 # Install the executable
@@ -46,3 +46,12 @@ install(TARGETS PrismMain
 )
 
 message(STATUS "Temporary build setup configured for main.cpp")
+
+# Copy imgui.ini
+add_custom_command(
+    TARGET PrismMain POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/src//imgui.ini
+        $<TARGET_FILE_DIR:PrismMain>
+    COMMENT "Copying imgui.ini to executable directory"
+)

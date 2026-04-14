@@ -32,6 +32,15 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         void Render(float deltaTime, VkCommandBuffer commandBuffer, Resources::Scene& scene, Resources::RenderTargetResource& renderTarget);
 
     private:
+        struct MeshInfo
+        {
+            uint64_t vertexBufferAddress;
+            uint64_t indexBufferAddress;
+
+            int      textureIndex;
+            uint32_t _pad[3];
+        };
+
         inline static const Resources::Resource::ID SBT_BUFFER_ID = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/SBTBufferId");
 
         inline static const Resources::Resource::ID TLAS_INSTANCES_BUFFER_ID =
@@ -43,6 +52,9 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         inline static const Resources::Resource::ID MESH_BLAS_ID_PREFIX = std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/MeshBlasIdPrefix");
         inline static const Resources::Resource::ID MESH_BLAS_SCRATCH_BUFFER_ID_PREFIX =
             std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/MeshBlasScratchBufferIdPrefix");
+
+        inline static const Resources::Resource::ID MESHES_INFOS_BUFFER_ID =
+            std::hash<std::string_view>{}("RaytracedGeometryDrawingSubsystem/MeshesInfosBufferId");
 
         Resources::ContextResources& _contextResources;
 
@@ -62,5 +74,6 @@ namespace Prism::Systems::Subsystems::MeshDrawingSystem
         // When recreating TLAS.
         std::optional<Resources::VkBufferResource<VkAccelerationStructureInstanceKHR>> _tlasInstancesBufferToDelete = std::nullopt;
         std::optional<Resources::VkAccelerationStructureResource>                      _tlasAccelStructToDelete     = std::nullopt;
+        std::optional<Resources::VkBufferResource<MeshInfo>>                           _meshesInfosBufferToDelete   = std::nullopt;
     };
 }; // namespace Prism::Systems::Subsystems::MeshDrawingSystem
