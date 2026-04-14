@@ -96,6 +96,7 @@ namespace Prism::Resources
         for (const auto& pending : _pendingImageCopies) {
             vkCmdCopyBufferToImage(commandBuffer, _stagingBuffer.GetBuffer(), pending.destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &pending.region);
 
+            // TODO: What if we want another barrier?
             VkImageMemoryBarrier barrierToShader{};
             barrierToShader.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             barrierToShader.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;

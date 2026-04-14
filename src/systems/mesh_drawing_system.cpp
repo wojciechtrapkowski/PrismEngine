@@ -15,6 +15,22 @@
 
 namespace Prism::Systems
 {
+    namespace
+    {
+        bool isSceneEmpty(const Resources::Scene& scene)
+        {
+            auto& registry = scene.GetRegistry();
+
+            auto meshTransformView = registry.view<Components::Mesh, Components::Transform>();
+            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
+                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }
+    }; // namespace
 
     MeshDrawingSystem::MeshDrawingSystem(Resources::ContextResources& contextResources) : _contextResources(contextResources)
     {
@@ -40,17 +56,7 @@ namespace Prism::Systems
             systemsSettingsView = registry.view<Components::MeshDrawingSystemSettings>();
         }
 
-        auto meshTransformView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
-        bool isEmptyScene      = [&]() {
-            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
-                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
-                    continue;
-                }
-                return false;
-            }
-            return true;
-        }();
-        if (isEmptyScene) {
+        if (isSceneEmpty(scene)) {
             vkEndCommandBuffer(commandBuffer);
             return;
         }
@@ -68,17 +74,7 @@ namespace Prism::Systems
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        auto meshTransformView = scene.GetRegistry().view<Components::Mesh, Components::Transform>();
-        bool isEmptyScene      = [&]() {
-            for (auto [_, _mesh, _transform] : meshTransformView.each()) {
-                if (_mesh.resourceId == Resources::MeshResource::UNINITIALIZED_ID) {
-                    continue;
-                }
-                return false;
-            }
-            return true;
-        }();
-        if (isEmptyScene) {
+        if (isSceneEmpty(scene)) {
             vkEndCommandBuffer(commandBuffer);
             return;
         }

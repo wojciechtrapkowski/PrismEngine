@@ -34,7 +34,7 @@ void main()
     vec4 objectColor = vec4(1.0, 0.0, 0.0, 1.0);
 
     if (inTextureId != -1) {
-        objectColor = texture(textures[nonuniformEXT(inTextureId)], inTextureUV); // why?
+        objectColor = texture(textures[nonuniformEXT(inTextureId)], inTextureUV);
     }
     vec3 result = (ambient + diffuse) * vec3(objectColor);
 

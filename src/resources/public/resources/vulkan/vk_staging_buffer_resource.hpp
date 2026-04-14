@@ -20,10 +20,6 @@ namespace Prism::Resources
     {
         VkImage           destination;
         VkBufferImageCopy region;
-
-        // VkImageMemoryBarrier before
-        // VkImageMemoryBarrier after
-        // We could create a resource, that will also contain src stage and dst stage
     };
 
     struct VkStagingBufferResource : ResourceImpl<VkStagingBufferResource>
