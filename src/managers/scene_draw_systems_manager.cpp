@@ -65,7 +65,6 @@ namespace Prism::Managers
 
         _commandPools = createCommandPools(device, graphicsQueueFamilyIndex, framesInFlight);
 
-        _tempSemaphores   = createSemaphores(device, framesInFlight);
         _updateSemaphores = createSemaphores(device, framesInFlight);
         _renderSemaphores = createSemaphores(device, framesInFlight);
 
@@ -76,9 +75,6 @@ namespace Prism::Managers
     {
         auto& vulkanResource = _contextResources.GetVulkanResource();
 
-        for (auto& sem : _tempSemaphores) {
-            vkDestroySemaphore(vulkanResource.GetDevice(), sem, nullptr);
-        }
         for (auto& sem : _updateSemaphores) {
             vkDestroySemaphore(vulkanResource.GetDevice(), sem, nullptr);
         }
@@ -92,7 +88,6 @@ namespace Prism::Managers
         auto& vulkanResource                = _contextResources.GetVulkanResource();
         auto& swapchainBoundResourceStorage = vulkanResource.GetSwapchainBoundStorage();
 
-        auto& currentTempSemaphore   = _tempSemaphores.at(vulkanResource.GetCurrentFrameOffset());
         auto& currentUpdateSemaphore = _updateSemaphores.at(vulkanResource.GetCurrentFrameOffset());
         auto& currentRenderSemaphore = _renderSemaphores.at(vulkanResource.GetCurrentFrameOffset());
 
@@ -122,29 +117,10 @@ namespace Prism::Managers
         }
         auto& renderTarget = renderTargetOpt->get();
 
-        { // Update systems that need to be updated before rendering, like mesh loading system that needs to load meshes before we can render them.
+        { // Update
             auto commandBuffersScope = currentCommandPoolResource.BeginScope();
 
             _meshLoadingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
-
-            currentStagingBuffer.Commit(commandBuffersScope.GetNextCommandBuffer());
-
-            VkSubmitInfo submitInfo{};
-            submitInfo.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.waitSemaphoreCount     = 0;
-            submitInfo.pWaitSemaphores        = nullptr;
-            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
-            submitInfo.pWaitDstStageMask      = waitStages;
-            submitInfo.commandBufferCount     = static_cast<uint32_t>(commandBuffersScope.size());
-            submitInfo.pCommandBuffers        = commandBuffersScope.data();
-            submitInfo.signalSemaphoreCount   = 1;
-            submitInfo.pSignalSemaphores      = &currentTempSemaphore;
-
-            vkQueueSubmit(vulkanResource.GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        }
-
-        { // Update
-            auto commandBuffersScope = currentCommandPoolResource.BeginScope();
 
             _screenClearingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
             _meshDrawingSystem.Update(deltaTime, commandBuffersScope.GetNextCommandBuffer(), currentStagingBuffer, scene);
@@ -156,8 +132,8 @@ namespace Prism::Managers
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.waitSemaphoreCount     = 1;
-            submitInfo.pWaitSemaphores        = &currentTempSemaphore;
+            submitInfo.waitSemaphoreCount     = 0;
+            submitInfo.pWaitSemaphores        = nullptr;
             VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
             submitInfo.pWaitDstStageMask      = waitStages;
             submitInfo.commandBufferCount     = static_cast<uint32_t>(commandBuffersScope.size());

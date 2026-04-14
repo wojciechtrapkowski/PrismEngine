@@ -32,8 +32,8 @@ namespace Prism::Systems
         auto& registry = scene.GetRegistry();
 
         // For testing purposes.
-        static bool isFirstFrame = true;
-        if (isFirstFrame) {
+        bool static firstFrames = true;
+        if (firstFrames && _contextResources.GetVulkanResource().GetCurrentFrameOffset() == 0) {
             Loaders::MeshLoader meshLoader;
             auto backpackModelOpt = meshLoader(_contextResources.GetVulkanResource(), commandBuffer, stagingBuffer, "../models/backpack-texture/scene.gltf");
             if (!backpackModelOpt) {
@@ -44,13 +44,6 @@ namespace Prism::Systems
 
                 auto& meshStorage = scene.GetMeshStorage();
                 meshStorage.Insert<Resources::MeshResource>(backpackId, std::move(backpackModel));
-
-                auto& registry = scene.GetRegistry();
-                auto  entity   = registry.create();
-                registry.emplace<Components::Mesh>(entity, backpackId);
-                registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
-                registry.emplace<Components::Name>(entity, "Backpack");
-                registry.emplace<Components::Tags::ActivePlayer>(entity);
             }
 
             auto cubeModelOpt = meshLoader(_contextResources.GetVulkanResource(), commandBuffer, stagingBuffer, "../models/backpack.obj");
@@ -62,15 +55,28 @@ namespace Prism::Systems
 
                 auto& meshStorage = scene.GetMeshStorage();
                 meshStorage.Insert<Resources::MeshResource>(cubeId, std::move(cubeModel));
+            }
+        }
+        if (firstFrames && _contextResources.GetVulkanResource().GetCurrentFrameOffset() == 1) {
+            auto& registry = scene.GetRegistry();
 
-                auto& registry = scene.GetRegistry();
-                auto  entity   = registry.create();
+            {
+                auto entity     = registry.create();
+                auto backpackId = std::hash<std::string>{}("MeshResources/Backpack");
+                registry.emplace<Components::Mesh>(entity, backpackId);
+                registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
+                registry.emplace<Components::Name>(entity, "Backpack");
+                registry.emplace<Components::Tags::ActivePlayer>(entity);
+            }
+
+            {
+                auto cubeId = std::hash<std::string>{}("MeshResources/Cube");
+                auto entity = registry.create();
                 registry.emplace<Components::Mesh>(entity, cubeId);
                 registry.emplace<Components::Transform>(entity, glm::mat4(1.0f));
                 registry.emplace<Components::Name>(entity, "Cube");
             }
-
-            isFirstFrame = false;
+            firstFrames = false;
         }
 
         if (_meshFilePathToLoad) {

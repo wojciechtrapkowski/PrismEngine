@@ -45,7 +45,6 @@ namespace Prism::Managers
 
         // That is temporary, need a place for that. This is per frame in flight.
         std::vector<Resources::VkCommandPoolResource> _commandPools     = {};
-        std::vector<VkSemaphore>                      _tempSemaphores   = {};
         std::vector<VkSemaphore>                      _updateSemaphores = {};
         std::vector<VkSemaphore>                      _renderSemaphores = {};
 
